@@ -78,10 +78,24 @@ endif()
 
 message(STATUS "Found libwkhtmltox: ${WKHTMLTOX_LIBRARY}")
 
-add_executable(${PROJECT_NAME}
-    src/main.cpp
+# Create a static library for use by other targets
+add_library(htmlToPDF STATIC
     src/template_engine.cpp
     src/pdf_generator.cpp
+)
+
+target_include_directories(htmlToPDF PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${WKHTMLTOX_INCLUDE_DIR}
+)
+
+target_link_libraries(htmlToPDF PUBLIC
+    ${WKHTMLTOX_LIBRARY}
+)
+
+# Create standalone executable
+add_executable(${PROJECT_NAME}
+    src/main.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -90,6 +104,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    htmlToPDF
     ${WKHTMLTOX_LIBRARY}
 )
 

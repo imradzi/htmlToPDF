@@ -6,7 +6,10 @@
 std::string TemplateEngine::render(const std::string& templateStr, const TemplateContext& context) {
     std::string result = templateStr;
     
-    // First process {{#each}} blocks
+    // First process {{#if}} blocks (conditionals)
+    result = processIfBlocks(result, context.variables);
+    
+    // Then process {{#each}} blocks
     result = processEachBlocks(result, context.lists);
     
     // Then replace all {{key}} patterns with values from context
@@ -17,6 +20,37 @@ std::string TemplateEngine::render(const std::string& templateStr, const Templat
     // Remove any remaining unmatched variables
     std::regex pattern(R"(\{\{[^#/][^}]*\}\})");
     result = std::regex_replace(result, pattern, "");
+    
+    return result;
+}
+
+std::string TemplateEngine::processIfBlocks(const std::string& input,
+                                             const std::map<std::string, std::string>& variables) {
+    std::string result = input;
+    
+    // Pattern: {{#if varName}}...{{/if}}
+    std::regex ifPattern(R"(\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{/if\}\})");
+    std::smatch match;
+    
+    while (std::regex_search(result, match, ifPattern)) {
+        std::string varName = match[1].str();
+        std::string blockContent = match[2].str();
+        std::string replacement;
+        
+        auto it = variables.find(varName);
+        // Condition is true if variable exists and is not empty, "0", or "false"
+        bool conditionTrue = (it != variables.end() && 
+                              !it->second.empty() && 
+                              it->second != "0" && 
+                              it->second != "false");
+        
+        if (conditionTrue) {
+            replacement = blockContent;
+        }
+        
+        result = result.substr(0, match.position()) + replacement + 
+                 result.substr(match.position() + match.length());
+    }
     
     return result;
 }
@@ -266,6 +300,337 @@ std::string TemplateEngine::getLetterTemplate() {
     <div class="signature">
         <strong>{{sender_name}}</strong><br>
         {{sender_title}}
+    </div>
+</body>
+</html>)";
+}
+std::string TemplateEngine::getSalesSummaryTemplate() {
+    return R"(<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+        font-family: Arial, sans-serif; 
+        font-size: 10pt; 
+        color: #333; 
+        padding: 20px;
+        line-height: 1.4;
+    }
+    
+    .header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+    .title { font-size: 12pt; font-weight: bold; }
+    .meta { text-align: right; font-size: 9pt; }
+    
+    .outlet-info {
+        margin: 15px 0;
+        padding: 10px;
+        background: {{letterhead_fill_color}};
+        border: 1px solid {{box_color}};
+    }
+    .outlet-name { font-weight: bold; }
+    
+    .date-range {
+        display: flex;
+        justify-content: space-between;
+        margin: 10px 0;
+    }
+    
+    .shift-info {
+        margin: 5px 0;
+        text-align: right;
+    }
+    
+    .section {
+        margin: 15px 0;
+    }
+    .section-title {
+        font-weight: bold;
+        font-size: 10pt;
+        margin-bottom: 5px;
+        padding: 3px 0;
+        border-bottom: 1px solid #333;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 5px 0;
+        font-size: 10pt;
+    }
+    
+    th {
+        background: {{theme_color}};
+        color: white;
+        font-size: 9pt;
+        text-align: left;
+        padding: 5px 8px;
+    }
+    th.amount { text-align: right; }
+    
+    td {
+        padding: 4px 8px;
+        border-bottom: 1px solid #eee;
+    }
+    td.amount { text-align: right; }
+    
+    .bordered td {
+        border: 1px solid #ddd;
+    }
+    
+    tr:nth-child(even) { background: #f9f9f9; }
+    
+    .total-row {
+        font-weight: bold;
+        background: #f0f0f0 !important;
+    }
+    .total-row td {
+        border-top: 2px solid #333;
+    }
+    
+    .summary-table {
+        width: auto;
+        min-width: 300px;
+    }
+    .summary-table td:first-child {
+        padding-right: 30px;
+    }
+    
+    .narrow-section {
+        max-width: 400px;
+    }
+    
+    .footer {
+        margin-top: 30px;
+        padding-top: 10px;
+        border-top: 1px solid #ddd;
+        font-size: 9pt;
+        color: #666;
+    }
+</style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">{{title}}</div>
+        <div class="meta">
+            <div>Date computed: {{date_computed}}</div>
+            <div>Print at: {{terminal_name}}</div>
+        </div>
+    </div>
+    
+    <div class="outlet-info">
+        <div class="outlet-name">{{outlet_code}} {{outlet_name}}</div>
+        <div>{{outlet_name2}}</div>
+        <div>{{outlet_address_1}}</div>
+        <div>{{outlet_address_2}}</div>
+        <div>{{outlet_address_3}}</div>
+        <div>{{outlet_address_4}}</div>
+    </div>
+    
+    <div class="date-range">
+        <div>FROM: {{from_date}}</div>
+        <div>TO: {{to_date}}</div>
+    </div>
+    
+    <div>Number of receipts: {{num_receipts}}</div>
+    
+    {{#if is_shift}}
+    <div class="shift-info">
+        <div>Shift ID: {{shift_id}}</div>
+        <div>Terminal: {{shift_terminal}}</div>
+    </div>
+    {{/if}}
+    
+    {{#if show_category}}
+    <div class="section">
+        <div class="section-title">TOTAL BY CATEGORY</div>
+        <table class="summary-table">
+            <tbody>
+                {{#each categories}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td class="amount">{{amount}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td>**Total</td>
+                    <td class="amount">{{total_sales}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+    
+    {{#if show_by_date}}
+    <div class="section">
+        <div class="section-title">TOTAL BY DATE</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>DATE</th>
+                    <th class="amount">GST</th>
+                    <th class="amount">AMOUNT</th>
+                    <th class="amount">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each dates}}
+                <tr>
+                    <td>{{date}}</td>
+                    <td class="amount">{{gst}}</td>
+                    <td class="amount">{{amount}}</td>
+                    <td class="amount">{{total}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td>**Total</td>
+                    <td class="amount">{{dates_total_gst}}</td>
+                    <td class="amount">{{dates_total_amount}}</td>
+                    <td class="amount">{{dates_total}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+    
+    <div class="section narrow-section">
+        <div class="section-title">TOTAL BY PAYMENT TYPE</div>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>PAYMENT TYPE</th>
+                    <th class="amount">AMOUNT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each payment_types}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td class="amount">{{amount}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td>**Total Discount &amp; Rounding</td>
+                    <td class="amount">{{total_discount_rounding}}</td>
+                </tr>
+                <tr class="total-row">
+                    <td>**Total GST Collected</td>
+                    <td class="amount">{{total_gst}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="section narrow-section">
+        <div class="section-title">CASH TAKEN OUT FROM DRAWER</div>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>TYPE</th>
+                    <th class="amount">AMOUNT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each cash_outs}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td class="amount">{{amount}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td>**Total Cash Taken Out</td>
+                    <td class="amount">{{total_cash_out}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="section narrow-section">
+        <table class="summary-table">
+            <tbody>
+                <tr>
+                    <td>Return/Cancelled</td>
+                    <td class="amount">{{return_cancelled}}</td>
+                </tr>
+                {{#if is_cash_sales}}
+                {{#if is_shift}}
+                <tr>
+                    <td>STARTING CASH</td>
+                    <td class="amount">{{starting_cash}}</td>
+                </tr>
+                {{/if}}
+                <tr>
+                    <td>CASH IN DRAWER</td>
+                    <td class="amount">{{cash_in_drawer}}</td>
+                </tr>
+                {{#if is_shift}}
+                <tr>
+                    <td>REPORTED CLOSING CASH</td>
+                    <td class="amount">{{closing_cash}}</td>
+                </tr>
+                {{/if}}
+                {{/if}}
+            </tbody>
+        </table>
+    </div>
+    
+    {{#if show_membership}}
+    <div class="section narrow-section">
+        <div class="section-title">MEMBERSHIP REWARDS</div>
+        <table class="summary-table">
+            <tbody>
+                <tr>
+                    <td>Point Given</td>
+                    <td class="amount">{{points_given}}</td>
+                </tr>
+                <tr>
+                    <td>Point Reimbursed</td>
+                    <td class="amount">{{points_reimbursed}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+    
+    {{#if show_by_customer}}
+    <div class="section">
+        <div class="section-title">TOTAL BY CUSTOMER</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>CUSTOMER</th>
+                    <th class="amount">SALES</th>
+                    <th class="amount">COST</th>
+                    <th class="amount">MGN</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each customers}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td class="amount">{{sales}}</td>
+                    <td class="amount">{{cost}}</td>
+                    <td class="amount">{{margin}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td>Total</td>
+                    <td class="amount">{{customer_total_sales}}</td>
+                    <td class="amount">{{customer_total_cost}}</td>
+                    <td class="amount">{{customer_total_margin}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {{/if}}
+    
+    <div class="footer">
+        Generated by PharmaPOS
     </div>
 </body>
 </html>)";

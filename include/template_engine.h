@@ -27,6 +27,7 @@ public:
     static std::string getInvoiceTemplate();
     static std::string getReportTemplate();
     static std::string getLetterTemplate();
+    static std::string getSalesSummaryTemplate();
 
 private:
     static std::string replaceVariable(const std::string& input, 
@@ -34,4 +35,6 @@ private:
                                         const std::string& value);
     static std::string processEachBlocks(const std::string& input,
                                           const std::map<std::string, std::vector<Item>>& lists);
+    static std::string processIfBlocks(const std::string& input,
+                                         const std::map<std::string, std::string>& variables);
 };

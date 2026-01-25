@@ -82,6 +82,7 @@ message(STATUS "Found libwkhtmltox: ${WKHTMLTOX_LIBRARY}")
 add_library(htmlToPDF STATIC
     src/template_engine.cpp
     src/pdf_generator.cpp
+    src/sales_summary_builder.cpp
 )
 
 target_include_directories(htmlToPDF PUBLIC

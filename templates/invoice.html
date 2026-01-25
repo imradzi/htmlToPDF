@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 11pt; color: #333; padding: 20px; }
+    .letterhead { width: 100%; max-height: 100px; margin-bottom: 20px; }
+    .header { margin-bottom: 30px; }
+    .invoice-title { font-size: 24pt; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }
+    .invoice-info { margin-bottom: 20px; }
+    .invoice-info p { margin: 3px 0; }
+    .customer-info { margin-bottom: 30px; }
+    .customer-info h3 { font-size: 12pt; color: #666; margin-bottom: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th { background: #2c3e50; color: white; font-size: 11pt; text-align: left; padding: 10px; }
+    td { padding: 10px; border-bottom: 1px solid #ddd; }
+    .amount { text-align: right; }
+    .subtotal-row td { border-top: 2px solid #2c3e50; font-weight: bold; }
+    .total-row { background: #f8f9fa; }
+    .total-row td { font-size: 14pt; font-weight: bold; border-top: 2px solid #2c3e50; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 10pt; color: #666; }
+</style>
+</head>
+<body>
+    <img src="{{letterhead_image}}" class="letterhead" onerror="this.style.display='none'">   
+    <div class="header">
+        <div class="invoice-title">INVOICE</div>
+        <div class="invoice-info">
+            <p><strong>Invoice #:</strong> {{invoice_number}}</p>
+            <p><strong>Date:</strong> {{date}}</p>
+            <p><strong>Due Date:</strong> {{due_date}}</p>
+        </div>
+    </div>
+    
+    <div class="customer-info">
+        <h3>Bill To:</h3>
+        <p><strong>{{customer_name}}</strong></p>
+        <p>{{customer_address}}</p>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Qty</th>
+                <th class="amount">Unit Price</th>
+                <th class="amount">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each items}}
+            <tr>
+                <td>{{description}}</td>
+                <td>{{qty}}</td>
+                <td class="amount">{{unit_price}}</td>
+                <td class="amount">{{amount}}</td>
+            </tr>
+            {{/each}}
+            <tr class="subtotal-row">
+                <td colspan="3">Subtotal</td>
+                <td class="amount">{{subtotal}}</td>
+            </tr>
+            <tr>
+                <td colspan="3">Tax ({{tax_rate}})</td>
+                <td class="amount">{{tax_amount}}</td>
+            </tr>
+            <tr class="total-row">
+                <td colspan="3">Total</td>
+                <td class="amount">{{currency}} {{total}}</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        <p><strong>Payment Terms:</strong> {{payment_terms}}</p>
+        <p><strong>Bank:</strong> {{bank_name}} | <strong>Account:</strong> {{bank_account}}</p>
+        <p style="margin-top: 20px;">Thank you for your business.</p>
+    </div>
+</body>
+</html>

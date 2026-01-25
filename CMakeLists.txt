@@ -78,17 +78,52 @@ endif()
 
 message(STATUS "Found libwkhtmltox: ${WKHTMLTOX_LIBRARY}")
 
+# ========== Template Generation ==========
+# Generate C++ header from HTML templates
+set(TEMPLATE_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/templates/invoice.html
+    ${CMAKE_CURRENT_SOURCE_DIR}/templates/report.html
+    ${CMAKE_CURRENT_SOURCE_DIR}/templates/letter.html
+    ${CMAKE_CURRENT_SOURCE_DIR}/templates/sales_summary.html
+)
+
+set(GENERATED_TEMPLATES_HEADER ${CMAKE_CURRENT_BINARY_DIR}/generated/template_strings.h)
+
+# Custom command to generate the header from HTML files
+add_custom_command(
+    OUTPUT ${GENERATED_TEMPLATES_HEADER}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/generated
+    COMMAND ${CMAKE_COMMAND}
+        -DTEMPLATES_DIR=${CMAKE_CURRENT_SOURCE_DIR}/templates
+        -DOUTPUT_FILE=${GENERATED_TEMPLATES_HEADER}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/generate_templates.cmake
+    DEPENDS ${TEMPLATE_FILES} ${CMAKE_CURRENT_SOURCE_DIR}/cmake/generate_templates.cmake
+    COMMENT "Generating template_strings.h from HTML templates"
+    VERBATIM
+)
+
+# Custom target for manual regeneration
+add_custom_target(generate_templates
+    DEPENDS ${GENERATED_TEMPLATES_HEADER}
+    COMMENT "Regenerating template strings from HTML files"
+)
+
 # Create a static library for use by other targets
 add_library(htmlToPDF STATIC
     src/template_engine.cpp
     src/pdf_generator.cpp
     src/sales_summary_builder.cpp
+    ${GENERATED_TEMPLATES_HEADER}  # Add as source so it's tracked as dependency
 )
 
 target_include_directories(htmlToPDF PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
     ${WKHTMLTOX_INCLUDE_DIR}
 )
+
+# Ensure template generation happens before compiling
+add_dependencies(htmlToPDF generate_templates)
 
 target_link_libraries(htmlToPDF PUBLIC
     ${WKHTMLTOX_LIBRARY}

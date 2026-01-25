@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #333; padding: 40px; line-height: 1.6; }
+    .letterhead { width: 100%; max-height: 100px; margin-bottom: 30px; }
+    .sender { margin-bottom: 30px; }
+    .date { margin-bottom: 30px; }
+    .recipient { margin-bottom: 30px; }
+    .salutation { margin-bottom: 20px; }
+    .body { margin-bottom: 30px; text-align: justify; }
+    .closing { margin-top: 30px; }
+    .signature { margin-top: 50px; }
+</style>
+</head>
+<body>
+    <img src="{{letterhead_image}}" class="letterhead" onerror="this.style.display='none'">
+    
+    <div class="sender">
+        <strong>{{sender_name}}</strong><br>
+        {{sender_address}}
+    </div>
+    
+    <div class="date">{{date}}</div>
+    
+    <div class="recipient">
+        <strong>{{recipient_name}}</strong><br>
+        {{recipient_address}}
+    </div>
+    
+    <div class="salutation">Dear {{recipient_name}},</div>
+    
+    <div class="body">{{body}}</div>
+    
+    <div class="closing">Sincerely,</div>
+    
+    <div class="signature">
+        <strong>{{sender_name}}</strong><br>
+        {{sender_title}}
+    </div>
+</body>
+</html>

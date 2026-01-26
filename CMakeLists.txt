@@ -7,73 +7,50 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
-# wkhtmltox download settings
+# wkhtmltox settings - bundled libraries for Windows
 set(WKHTMLTOX_VERSION "0.12.6-1")
-set(WKHTMLTOX_DIR "${CMAKE_BINARY_DIR}/wkhtmltox")
 
-# Try to find existing installation first
-find_path(WKHTMLTOX_INCLUDE_DIR wkhtmltox/pdf.h
-    PATHS 
-        /usr/include 
-        /usr/local/include
-        "C:/Program Files/wkhtmltopdf/include"
-        "$ENV{ProgramFiles}/wkhtmltopdf/include"
-        "${WKHTMLTOX_DIR}/include"
-)
-find_library(WKHTMLTOX_LIBRARY NAMES wkhtmltox
-    PATHS 
-        /usr/lib 
-        /usr/local/lib 
-        /usr/lib/x86_64-linux-gnu
-        "C:/Program Files/wkhtmltopdf/lib"
-        "$ENV{ProgramFiles}/wkhtmltopdf/lib"
-        "${WKHTMLTOX_DIR}/lib"
-)
-
-# Download if not found
-if(NOT WKHTMLTOX_INCLUDE_DIR OR NOT WKHTMLTOX_LIBRARY)
-    message(STATUS "wkhtmltox not found, downloading...")
-    
-    if(WIN32)
-        set(WKHTMLTOX_URL "https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTMLTOX_VERSION}/wkhtmltox-${WKHTMLTOX_VERSION}.msvc2015-win64.exe")
-        set(WKHTMLTOX_ARCHIVE "${CMAKE_BINARY_DIR}/wkhtmltox.exe")
+if(WIN32)
+    # Use bundled wkhtmltox libraries based on target architecture
+    if(CMAKE_CL_64 STREQUAL "0")
+        # 32-bit build
+        set(WKHTMLTOX_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lib/win32")
+        message(STATUS "Using 32-bit wkhtmltox library")
     else()
-        message(FATAL_ERROR "Automatic download not supported on this platform. Install wkhtmltox manually.")
+        # 64-bit build
+        set(WKHTMLTOX_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64")
+        message(STATUS "Using 64-bit wkhtmltox library")
     endif()
     
-    if(NOT EXISTS "${WKHTMLTOX_DIR}/include/wkhtmltox/pdf.h")
-        message(STATUS "Downloading wkhtmltox from ${WKHTMLTOX_URL}")
-        file(DOWNLOAD 
-            "${WKHTMLTOX_URL}" 
-            "${WKHTMLTOX_ARCHIVE}"
-            SHOW_PROGRESS
-            STATUS DOWNLOAD_STATUS
-        )
-        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
-        if(NOT STATUS_CODE EQUAL 0)
-            message(FATAL_ERROR "Failed to download wkhtmltox")
-        endif()
-        
-        # Extract using 7z (the exe is a 7z self-extracting archive)
-        message(STATUS "Extracting wkhtmltox...")
-        file(MAKE_DIRECTORY "${WKHTMLTOX_DIR}")
-        execute_process(
-            COMMAND 7z x -y "-o${WKHTMLTOX_DIR}" "${WKHTMLTOX_ARCHIVE}"
-            RESULT_VARIABLE EXTRACT_RESULT
-            OUTPUT_QUIET
-        )
-        if(NOT EXTRACT_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to extract wkhtmltox. Make sure 7z is installed and in PATH.")
-        endif()
-    endif()
+    set(WKHTMLTOX_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    set(WKHTMLTOX_LIBRARY "${WKHTMLTOX_ROOT}/wkhtmltox.lib")
+    set(WKHTMLTOX_DLL "${WKHTMLTOX_ROOT}/wkhtmltox.dll")
     
-    # Set paths to downloaded library
-    set(WKHTMLTOX_INCLUDE_DIR "${WKHTMLTOX_DIR}/include" CACHE PATH "" FORCE)
-    set(WKHTMLTOX_LIBRARY "${WKHTMLTOX_DIR}/lib/wkhtmltox.lib" CACHE FILEPATH "" FORCE)
+    if(NOT EXISTS "${WKHTMLTOX_LIBRARY}")
+        message(FATAL_ERROR "wkhtmltox library not found at ${WKHTMLTOX_LIBRARY}. "
+            "Please place the appropriate wkhtmltox.lib in lib/win32 or lib/win64.")
+    endif()
+else()
+    # Linux: Try to find system installation
+    find_path(WKHTMLTOX_INCLUDE_DIR wkhtmltox/pdf.h
+        PATHS 
+            /usr/include 
+            /usr/local/include
+    )
+    find_library(WKHTMLTOX_LIBRARY NAMES wkhtmltox
+        PATHS 
+            /usr/lib 
+            /usr/local/lib 
+            /usr/lib/x86_64-linux-gnu
+    )
+    
+    if(NOT WKHTMLTOX_INCLUDE_DIR OR NOT WKHTMLTOX_LIBRARY)
+        message(FATAL_ERROR "wkhtmltox not found. Install libwkhtmltox-dev or equivalent.")
+    endif()
 endif()
 
 if(NOT EXISTS "${WKHTMLTOX_INCLUDE_DIR}/wkhtmltox/pdf.h")
-    message(FATAL_ERROR "wkhtmltox headers not found at ${WKHTMLTOX_INCLUDE_DIR}")
+    message(FATAL_ERROR "wkhtmltox headers not found at ${WKHTMLTOX_INCLUDE_DIR}/wkhtmltox")
 endif()
 
 message(STATUS "Found libwkhtmltox: ${WKHTMLTOX_LIBRARY}")
@@ -146,9 +123,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 # Copy wkhtmltox DLL to output directory (Windows)
 if(WIN32)
-    get_filename_component(WKHTMLTOX_LIB_DIR "${WKHTMLTOX_LIBRARY}" DIRECTORY)
-    get_filename_component(WKHTMLTOX_ROOT_DIR "${WKHTMLTOX_LIB_DIR}" DIRECTORY)
-    set(WKHTMLTOX_DLL "${WKHTMLTOX_ROOT_DIR}/bin/wkhtmltox.dll")
     if(EXISTS "${WKHTMLTOX_DLL}")
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different

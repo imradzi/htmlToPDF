@@ -20,7 +20,8 @@ find_path(WKHTMLTOX_INCLUDE_DIR wkhtmltox/pdf.h
         "$ENV{ProgramFiles}/wkhtmltopdf/include"
         "${WKHTMLTOX_DIR}/include"
 )
-find_library(WKHTMLTOX_LIBRARY NAMES wkhtmltox
+find_library(WKHTMLTOX_LIBRARY 
+    NAMES wkhtmltox libwkhtmltox.a wkhtmltox.lib
     PATHS 
         /usr/lib 
         /usr/local/lib 
@@ -29,6 +30,29 @@ find_library(WKHTMLTOX_LIBRARY NAMES wkhtmltox
         "$ENV{ProgramFiles}/wkhtmltopdf/lib"
         "${WKHTMLTOX_DIR}/lib"
 )
+
+# Option to prefer static linking
+option(WKHTMLTOX_STATIC "Link wkhtmltox statically" ON)
+
+if(WKHTMLTOX_STATIC)
+    # Try to find static library specifically
+    find_library(WKHTMLTOX_STATIC_LIB 
+        NAMES libwkhtmltox.a wkhtmltox.lib
+        PATHS 
+            /usr/lib 
+            /usr/local/lib 
+            /usr/lib/x86_64-linux-gnu
+            "C:/Program Files/wkhtmltopdf/lib"
+            "$ENV{ProgramFiles}/wkhtmltopdf/lib"
+            "${WKHTMLTOX_DIR}/lib"
+    )
+    if(WKHTMLTOX_STATIC_LIB)
+        set(WKHTMLTOX_LIBRARY ${WKHTMLTOX_STATIC_LIB})
+        message(STATUS "Using static wkhtmltox library")
+    else()
+        message(WARNING "Static wkhtmltox library not found, falling back to dynamic linking")
+    endif()
+endif()
 
 # Download if not found
 if(NOT WKHTMLTOX_INCLUDE_DIR OR NOT WKHTMLTOX_LIBRARY)
@@ -129,6 +153,23 @@ target_link_libraries(htmlToPDF PUBLIC
     ${WKHTMLTOX_LIBRARY}
 )
 
+# Additional dependencies for static linking
+if(WKHTMLTOX_STATIC AND WIN32)
+    target_link_libraries(htmlToPDF PUBLIC
+        ws2_32
+        wininet
+        gdi32
+        comdlg32
+        ole32
+        oleaut32
+        imm32
+        winmm
+        uuid
+    )
+    # Define static linking preprocessor flag
+    target_compile_definitions(htmlToPDF PUBLIC WKHTMLTOPDF_STATIC)
+endif()
+
 # Create standalone executable
 add_executable(${PROJECT_NAME}
     src/main.cpp
@@ -144,8 +185,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${WKHTMLTOX_LIBRARY}
 )
 
-# Copy wkhtmltox DLL to output directory (Windows)
-if(WIN32)
+# Copy wkhtmltox DLL to output directory (Windows) - only if not using static linking
+if(WIN32 AND NOT WKHTMLTOX_STATIC)
     get_filename_component(WKHTMLTOX_LIB_DIR "${WKHTMLTOX_LIBRARY}" DIRECTORY)
     get_filename_component(WKHTMLTOX_ROOT_DIR "${WKHTMLTOX_LIB_DIR}" DIRECTORY)
     set(WKHTMLTOX_DLL "${WKHTMLTOX_ROOT_DIR}/bin/wkhtmltox.dll")

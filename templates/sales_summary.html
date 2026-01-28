@@ -42,13 +42,33 @@
     
     .section {
         margin: 15px 0;
+        padding-left: 15px;
+        border-left: 1px solid #2c3e50;
     }
     .section-title {
         font-weight: bold;
         font-size: 10pt;
-        margin-bottom: 5px;
-        padding: 3px 0;
+        margin-bottom: 8px;
+        margin-left: -15px;
+        padding: 5px 10px;
+        background: #f0f0f0;
         border-bottom: 1px solid #333;
+    }
+    .section-content {
+        padding: 10px 0;
+    }
+    .section-content-param {
+        padding: 5px;
+        line-height: 1.2;
+    }
+    .section-content-param .date-range {
+        margin: 2px 0;
+    }
+    .section-content-param .shift-info {
+        margin: 2px 0;
+    }
+    .section-content-param > div {
+        margin: 2px 0;
     }
     
     table {
@@ -140,23 +160,23 @@
         {{#if outlet_address_4}}<div>{{outlet_address_4}}</div>{{/if}}
     </div>
     
-    <div class="date-range">
-        <div>FROM: {{from_date}}</div>
-        <div>TO: {{to_date}}</div>
+    <div>
+        <div class="section-content-param">
+            <div class="date-range">
+                <div>FROM: {{from_date}}</div>
+                <div>TO: {{to_date}}</div>
+            </div>
+            <div class="date-range">
+                <div>Number of receipts: {{num_receipts}}</div>               
+                {{#if is_shift}}<div>Shift ID: {{shift_id}}</div>{{/if}}
+            </div>
+        </div>
     </div>
-    
-    <div>Number of receipts: {{num_receipts}}</div>
-    
-    {{#if is_shift}}
-    <div class="shift-info">
-        <div>Shift ID: {{shift_id}}</div>
-        <div>Terminal: {{shift_terminal}}</div>
-    </div>
-    {{/if}}
     
     {{#if show_category}}
     <div class="section">
         <div class="section-title">TOTAL BY CATEGORY</div>
+        <div class="section-content">
         <table class="summary-table">
             <tbody>
                 {{#each categories}}
@@ -171,12 +191,14 @@
                 </tr>
             </tbody>
         </table>
+        </div>
     </div>
     {{/if}}
     
     {{#if show_by_date}}
     <div class="section">
         <div class="section-title">TOTAL BY DATE</div>
+        <div class="section-content">
         <table>
             <thead>
                 <tr>
@@ -203,11 +225,13 @@
                 </tr>
             </tbody>
         </table>
+        </div>
     </div>
     {{/if}}
     
-    <div class="section narrow-section">
+    <div class="section">
         <div class="section-title">TOTAL BY PAYMENT TYPE</div>
+        <div class="section-content">
         <table class="summary-table">
             <thead>
                 <tr>
@@ -232,10 +256,12 @@
                 </tr>
             </tbody>
         </table>
+        </div>
     </div>
     
-    <div class="section narrow-section">
+    <div class="section">
         <div class="section-title">CASH TAKEN OUT FROM DRAWER</div>
+        <div class="section-content">
         <table class="summary-table">
             <thead>
                 <tr>
@@ -256,9 +282,12 @@
                 </tr>
             </tbody>
         </table>
+        </div>
     </div>
     
-    <div class="section narrow-section">
+    <div class="section">
+        <div class="section-title">SUMMARY</div>
+        <div class="section-content">
         <table class="summary-table">
             <tbody>
                 <tr>
@@ -285,11 +314,13 @@
                 {{/if}}
             </tbody>
         </table>
+        </div>
     </div>
     
     {{#if show_membership}}
-    <div class="section narrow-section">
+    <div class="section">
         <div class="section-title">MEMBERSHIP REWARDS</div>
+        <div class="section-content">
         <table class="summary-table">
             <tbody>
                 <tr>
@@ -302,12 +333,14 @@
                 </tr>
             </tbody>
         </table>
+        </div>
     </div>
     {{/if}}
     
     {{#if show_by_customer}}
     <div class="section">
         <div class="section-title">TOTAL BY CUSTOMER</div>
+        <div class="section-content">
         <table>
             <thead>
                 <tr>
@@ -334,6 +367,7 @@
                 </tr>
             </tbody>
         </table>
+        </div>
     </div>
     {{/if}}
     

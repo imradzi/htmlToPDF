@@ -1,5 +1,5 @@
 {
-  "name": "atlas-bootstrap-hbs-server",
+  "name": "template-server",
   "version": "1.0.0",
   "description": "Local development server for Handlebars templates",
   "scripts": {

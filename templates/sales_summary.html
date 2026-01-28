@@ -79,7 +79,7 @@
     }
     
     th {
-        background: {{theme_color}};
+        background: #3c4248;
         color: white;
         font-size: 9pt;
         text-align: left;
@@ -128,7 +128,7 @@
     }
     
     .highlight {
-        background: {{fill_color}};
+        background: #2c3e50;
         padding: 5px;
         margin: 5px 0;
     }
@@ -160,7 +160,7 @@
         {{#if outlet_address_4}}<div>{{outlet_address_4}}</div>{{/if}}
     </div>
     
-    <div>
+    <div >
         <div class="section-content-param">
             <div class="date-range">
                 <div>FROM: {{from_date}}</div>
@@ -178,6 +178,12 @@
         <div class="section-title">TOTAL BY CATEGORY</div>
         <div class="section-content">
         <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>CATEGORY</th>
+                    <th class="amount">AMOUNT</th>
+                </tr>
+            </thead>
             <tbody>
                 {{#each categories}}
                 <tr>
@@ -289,28 +295,35 @@
         <div class="section-title">SUMMARY</div>
         <div class="section-content">
         <table class="summary-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th class="amount">AMOUNT</th>
+                </tr>
+            </thead>
+
             <tbody>
                 <tr>
                     <td>Return/Cancelled</td>
                     <td class="amount">{{return_cancelled}}</td>
                 </tr>
-                {{#if is_cash_sales}}
-                {{#if is_shift}}
+                {{#if show_starting_cash}}
                 <tr>
                     <td>STARTING CASH</td>
                     <td class="amount">{{starting_cash}}</td>
                 </tr>
                 {{/if}}
+                {{#if show_cash_in_drawer}}
                 <tr>
                     <td>CASH IN DRAWER</td>
                     <td class="amount">{{cash_in_drawer}}</td>
                 </tr>
-                {{#if is_shift}}
+                {{/if}}
+                {{#if show_closing_cash}}
                 <tr>
                     <td>REPORTED CLOSING CASH</td>
                     <td class="amount">{{closing_cash}}</td>
                 </tr>
-                {{/if}}
                 {{/if}}
             </tbody>
         </table>
@@ -322,6 +335,12 @@
         <div class="section-title">MEMBERSHIP REWARDS</div>
         <div class="section-content">
         <table class="summary-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th class="amount">POINTS</th>
+                </tr>
+            </thead>
             <tbody>
                 <tr>
                     <td>Point Given</td>

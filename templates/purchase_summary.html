@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+        font-family: Arial, sans-serif; 
+        font-size: 10pt; 
+        color: #333; 
+        padding: 20px;
+        line-height: 1.4;
+    }
+    
+    .header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+    }
+    .title { font-size: 12pt; font-weight: bold; }
+    .meta { text-align: right; font-size: 9pt; }
+    
+    .outlet-info {
+        margin: 15px 0;
+        padding: 10px;
+        background: {{letterhead_fill_color}};
+        border: 1px solid {{box_color}};
+    }
+    .outlet-name { font-weight: bold; }
+    
+    .date-range {
+        display: flex;
+        justify-content: space-between;
+        margin: 10px 0;
+    }
+    
+    .section {
+        margin: 15px 0;
+        padding-left: 15px;
+        border-left: 1px solid #2c3e50;
+    }
+    .section-title {
+        font-weight: bold;
+        font-size: 10pt;
+        margin-bottom: 8px;
+        margin-left: -15px;
+        padding: 5px 10px;
+        background: #f0f0f0;
+        border-bottom: 1px solid #333;
+    }
+    .section-content {
+        padding: 10px 0;
+    }
+    .section-content-param {
+        padding: 5px;
+        line-height: 1.2;
+    }
+    .section-content-param .date-range {
+        margin: 2px 0;
+    }
+    .section-content-param > div {
+        margin: 2px 0;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 5px 0;
+        font-size: 10pt;
+    }
+    
+    th {
+        background: #3c4248;
+        color: white;
+        font-size: 9pt;
+        text-align: left;
+        padding: 5px 8px;
+    }
+    th.amount { text-align: right; }
+    
+    td {
+        padding: 4px 8px;
+        border-bottom: 1px solid #eee;
+    }
+    td.amount { text-align: right; }
+    
+    .bordered td {
+        border: 1px solid #ddd;
+    }
+    
+    tr:nth-child(even) { background: #f9f9f9; }
+    
+    .total-row {
+        font-weight: bold;
+        background: #f0f0f0 !important;
+    }
+    .total-row td {
+        border-top: 2px solid #333;
+    }
+    
+    .summary-table {
+        width: auto;
+        min-width: 300px;
+    }
+    .summary-table td:first-child {
+        padding-right: 30px;
+    }
+    
+    .narrow-section {
+        max-width: 400px;
+    }
+    
+    .footer {
+        margin-top: 30px;
+        padding-top: 10px;
+        border-top: 1px solid #ddd;
+        font-size: 7pt;
+        color: #666;
+    }
+</style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">{{title}}</div>
+        <div class="meta">
+            <div>Date computed: {{date_computed}}</div>
+        </div>
+    </div>
+    
+    <div class="outlet-info">
+        <div class="outlet-name">{{outlet_code}} {{outlet_name}}</div>
+        {{#if outlet_name2}}<div>{{outlet_name2}}</div>{{/if}}
+        <div>{{outlet_address_1}}</div>
+        <div>{{outlet_address_2}}</div>
+        <div>{{outlet_address_3}}</div>
+        {{#if outlet_address_4}}<div>{{outlet_address_4}}</div>{{/if}}
+    </div>
+    
+    <div>
+        <div class="section-content-param">
+            <div class="date-range">
+                <div>FROM: {{from_date}}</div>
+                <div>TO: {{to_date}}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">TOTAL BY CATEGORY</div>
+        <div class="section-content">
+        <table>
+            <thead>
+                <tr>
+                    <th>CATEGORY</th>
+                    <th class="amount">GST</th>
+                    <th class="amount">AMOUNT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each categories}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td class="amount">{{gst}}</td>
+                    <td class="amount">{{amount}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td>Total</td>
+                    <td class="amount">{{total_category_gst}}</td>
+                    <td class="amount">{{total_category_amount}}</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">TOTAL BY PAYMENT TYPE</div>
+        <div class="section-content">
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>PAYMENT TYPE</th>
+                    <th class="amount">AMOUNT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each payment_types}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td class="amount">{{amount}}</td>
+                </tr>
+                {{/each}}
+                <tr>
+                    <td>Return/Cancelled</td>
+                    <td class="amount">{{return_cancelled}}</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">TOTAL BY SUPPLIER</div>
+        <div class="section-content">
+        <table>
+            <thead>
+                <tr>
+                    <th>SUPPLIER</th>
+                    <th class="amount">GST</th>
+                    <th class="amount">AMOUNT</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each suppliers}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td class="amount">{{gst}}</td>
+                    <td class="amount">{{amount}}</td>
+                </tr>
+                {{/each}}
+                <tr class="total-row">
+                    <td>Total</td>
+                    <td class="amount">{{total_supplier_gst}}</td>
+                    <td class="amount">{{total_supplier_amount}}</td>
+                </tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+    
+    <div class="footer">
+        Generated by PharmaPOS
+    </div>
+</body>
+</html>

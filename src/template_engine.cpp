@@ -127,3 +127,7 @@ std::string TemplateEngine::getLetterTemplate() {
 std::string TemplateEngine::getSalesSummaryTemplate() {
     return TemplateStrings::getSalesSummaryTemplate();
 }
+
+std::string TemplateEngine::getPurchaseSummaryTemplate() {
+    return TemplateStrings::getPurchaseSummaryTemplate();
+}

@@ -91,6 +91,15 @@ TemplateContext InvoicePDFBuilder::buildContext(const InvoiceData& data) {
     vars["is_goods_return"] = data.isGoodsReturn ? "1" : "";
     vars["is_invoice"] = (!data.isPurchaseOrder && !data.isGoodsReceived && !data.isGoodsReturn) ? "1" : "";
     
+    // Party label - derive from document type
+    if (data.isPurchaseOrder) {
+        vars["party_label"] = "Order From:";
+    } else if (data.isGoodsReceived) {
+        vars["party_label"] = "Invoice From:";
+    } else {
+        vars["party_label"] = "Invoice To:";
+    }
+    
     // Items label - use custom if provided, otherwise derive from document type
     if (!data.itemsLabel.empty()) {
         vars["items_label"] = data.itemsLabel;

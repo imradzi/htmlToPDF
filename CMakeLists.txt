@@ -108,9 +108,17 @@ target_include_directories(htmlToPDF PUBLIC
 # Ensure template generation happens before compiling
 add_dependencies(htmlToPDF generate_templates)
 
-target_link_libraries(htmlToPDF PUBLIC
-    ${WKHTMLTOX_LIBRARY}
-)
+# Link with logger from parent project if available
+if(TARGET logger)
+    target_link_libraries(htmlToPDF PUBLIC
+        ${WKHTMLTOX_LIBRARY}
+        logger
+    )
+else()
+    target_link_libraries(htmlToPDF PUBLIC
+        ${WKHTMLTOX_LIBRARY}
+    )
+endif()
 
 # Create standalone executable
 add_executable(${PROJECT_NAME}

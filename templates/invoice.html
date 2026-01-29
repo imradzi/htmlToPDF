@@ -130,7 +130,7 @@
 
     <div class="header-section">
         <div class="party-box">
-            <div class="party-label">{{#if is_purchase_order}}Order From:{{/if}}{{#if is_goods_received}}Invoice From:{{/if}}{{#if is_invoice}}Invoice To:{{/if}}</div>
+            <div class="party-label">{{party_label}}</div>
             <div class="party-name">{{invoice_to_name}}</div>
             <div class="party-address">{{invoice_to_address}}</div>
             {{#if show_account_id}}<div class="party-id">Account No: {{invoice_to_id}}</div>{{/if}}

@@ -29,6 +29,9 @@ public:
     static std::string getLetterTemplate();
     static std::string getSalesSummaryTemplate();
     static std::string getPurchaseSummaryTemplate();
+    static std::string getPoisonOrderTemplate();
+    static std::string getBillingStatementTemplate();
+    static std::string getPurchaseOrderTemplate();
 
 private:
     static std::string replaceVariable(const std::string& input, 

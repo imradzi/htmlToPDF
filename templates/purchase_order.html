@@ -24,11 +24,8 @@
     .letterhead-left { flex: 1; }
     .outlet-name { font-size: 14pt; font-weight: bold; }
     .outlet-name2 { font-size: 11pt; }
-    .outlet-address { font-size: 9pt; margin-top: 5px; white-space: pre-line; }
+    .outlet-address { font-size: 9pt; margin-top: 5px; }
     .outlet-reg { font-size: 8pt; color: #666; }
-    
-    .qr-code { margin-left: 15px; }
-    .qr-code img { width: 80px; height: 80px; }
     
     .header-section {
         display: flex;
@@ -45,7 +42,6 @@
     .party-label { font-size: 8pt; color: #666; margin-bottom: 3px; }
     .party-name { font-weight: bold; }
     .party-address { font-size: 8pt; white-space: pre-line; }
-    .party-id { font-size: 8pt; margin-top: 3px; }
     
     .doc-info-box {
         text-align: right;
@@ -85,31 +81,10 @@
     .total-row { font-weight: bold; background: #f0f0f0 !important; }
     .total-row td { border-top: 2px solid #333; }
     
-    .footer-section {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 20px;
-        font-size: 8pt;
-    }
-    .footer-box {
-        width: 18%;
-        padding: 8px;
-        border: 1px solid #ddd;
-        min-height: 60px;
-    }
-    .footer-box.wide { width: 30%; }
-    .footer-label { font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #ddd; padding-bottom: 3px; }
-    .footer-content { font-style: italic; font-size: 7pt; }
-    
-    .signature-line {
-        border-top: 1px solid #333;
-        margin-top: 30px;
-        padding-top: 5px;
-        text-align: center;
-        font-size: 7pt;
-    }
-    
     .page-info { text-align: right; font-size: 8pt; color: #666; margin-top: 10px; }
+    
+    .remark-section { margin-top: 15px; font-size: 8pt; }
+    .remark-label { font-weight: bold; }
 </style>
 </head>
 <body>
@@ -121,43 +96,29 @@
             {{#if outlet_reg_no}}<div class="outlet-reg">Reg No: {{outlet_reg_no}}</div>{{/if}}
             {{#if outlet_gst_reg_no}}<div class="outlet-reg">GST No: {{outlet_gst_reg_no}}</div>{{/if}}
         </div>
-        {{#if has_e_invoice}}
-        <div class="qr-code">
-            <img src="{{e_invoice_qr}}" alt="e-Invoice QR" />
-        </div>
-        {{/if}}
     </div>
 
     <div class="header-section">
         <div class="party-box">
-            <div class="party-label">{{#if is_purchase_order}}Order From:{{/if}}{{#if is_goods_received}}Invoice From:{{/if}}{{#if is_invoice}}Invoice To:{{/if}}</div>
+            <div class="party-label">{{#if is_purchase_order}}Order From:{{/if}}{{#if is_goods_received}}Invoice From:{{/if}}{{#if is_goods_return}}Return To:{{/if}}</div>
             <div class="party-name">{{invoice_to_name}}</div>
             <div class="party-address">{{invoice_to_address}}</div>
-            {{#if show_account_id}}<div class="party-id">Account No: {{invoice_to_id}}</div>{{/if}}
         </div>
         
         <div class="doc-info-box">
-            <div class="doc-type">{{#if is_draft}}DRAFT {{/if}}{{document_type}}</div>
+            <div class="doc-type">{{document_type}}</div>
             <div class="doc-details">
                 <div>{{transaction_date}}</div>
+                <div>Our Ref: {{id}}</div>
                 <div>{{ref_title}} {{ref_no}}</div>
-                {{#if is_purchase_order}}<div>Our Ref: {{id}}</div>{{/if}}
                 <div>Page: {{page_no}} of {{total_pages}}</div>
                 <div>Term: {{term}}</div>
             </div>
         </div>
     </div>
-    
-    {{#if show_deliver_to}}
-    <div class="party-box" style="width: 45%; margin-bottom: 10px;">
-        <div class="party-label">Deliver To:</div>
-        <div class="party-name">{{deliver_to_name}}</div>
-        <div class="party-address">{{deliver_to_address}}</div>
-    </div>
-    {{/if}}
 
     <div class="items-section">
-        <div class="items-label">{{items_label}}</div>
+        <div class="items-label">{{#if is_purchase_order}}We would like to order:{{/if}}{{#if is_goods_received}}Items purchased:{{/if}}{{#if is_goods_return}}Items returned:{{/if}}</div>
         
         <table>
             <thead>
@@ -166,14 +127,13 @@
                     {{#if show_code}}<th>CODE</th>{{/if}}
                     {{#if show_mal}}<th>MAL</th>{{/if}}
                     <th>NAME</th>
-                    <th>PACK</th>
                     {{#if show_batch_expiry}}<th>BATCH</th><th>EXPIRY</th>{{/if}}
                     <th class="amt">QTY</th>
-                    {{#if show_bonus}}<th class="amt">BONUS</th>{{/if}}
+                    <th class="amt">BONUS</th>
                     {{#if show_gst}}
                     <th class="amt">PRICE</th>
-                    {{#if show_srp}}<th class="amt">SRP</th>{{/if}}
-                    {{#if show_discount}}<th class="amt">DISC</th>{{/if}}
+                    <th class="amt">NETT</th>
+                    {{#if show_srp}}<th class="amt">SELL</th><th class="amt">MARGIN</th>{{/if}}
                     <th class="amt">GST</th>
                     <th class="amt">AMOUNT</th>
                     {{/if}}
@@ -186,14 +146,13 @@
                     {{#if show_code}}<td>{{code}}</td>{{/if}}
                     {{#if show_mal}}<td>{{mal}}</td>{{/if}}
                     <td>{{name}}</td>
-                    <td>{{packing}}</td>
                     {{#if show_batch_expiry}}<td>{{batch_no}}</td><td>{{expiry_date}}</td>{{/if}}
                     <td class="amt">{{quantity}}</td>
-                    {{#if show_bonus}}<td class="amt">{{bonus}}</td>{{/if}}
+                    <td class="amt">{{bonus}}</td>
                     {{#if show_gst}}
                     <td class="amt">{{price}}</td>
-                    {{#if show_srp}}<td class="amt">{{selling_price}}</td>{{/if}}
-                    {{#if show_discount}}<td class="amt">{{discount}}</td>{{/if}}
+                    <td class="amt">{{net_price}}</td>
+                    {{#if show_srp}}<td class="amt">{{selling_price}}</td><td class="amt">{{margin}}</td>{{/if}}
                     <td class="amt">{{gst}}</td>
                     <td class="amt">{{amount}}</td>
                     {{/if}}
@@ -205,13 +164,12 @@
                     {{#if show_code}}<td></td>{{/if}}
                     {{#if show_mal}}<td></td>{{/if}}
                     <td></td>
-                    <td></td>
                     {{#if show_batch_expiry}}<td></td><td></td>{{/if}}
                     <td></td>
-                    {{#if show_bonus}}<td></td>{{/if}}
+                    <td></td>
+                    <td></td>
                     <td class="amt">TOTAL</td>
-                    {{#if show_srp}}<td></td>{{/if}}
-                    {{#if show_discount}}<td class="amt">{{total_discount}}</td>{{/if}}
+                    {{#if show_srp}}<td></td><td></td>{{/if}}
                     <td class="amt">{{total_gst}}</td>
                     <td class="amt">{{total_amount}}</td>
                 </tr>
@@ -220,32 +178,12 @@
         </table>
     </div>
 
-    <div class="footer-section">
-        <div class="footer-box wide">
-            <div class="footer-label">Notes</div>
-            <div class="footer-content">
-                {{#each notes}}<div>{{text}}</div>{{/each}}
-            </div>
-        </div>
-        <div class="footer-box">
-            <div class="footer-label">Remark</div>
-            <div class="footer-content">
-                {{#each remarks}}<div>{{text}}</div>{{/each}}
-            </div>
-        </div>
-        <div class="footer-box">
-            <div class="footer-label">Prepared By</div>
-            <div class="signature-line"></div>
-        </div>
-        <div class="footer-box">
-            <div class="footer-label">Checked By</div>
-            <div class="signature-line"></div>
-        </div>
-        <div class="footer-box">
-            <div class="footer-label">Received in good order</div>
-            <div class="signature-line"></div>
-        </div>
+    {{#if has_remarks}}
+    <div class="remark-section">
+        <span class="remark-label">Remark:</span>
+        {{#each remarks}}<div>{{text}}</div>{{/each}}
     </div>
+    {{/if}}
 
     <div class="page-info">Generated by PharmaPOS</div>
 </body>

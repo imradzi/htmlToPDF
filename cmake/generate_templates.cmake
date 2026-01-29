@@ -22,6 +22,9 @@ file_to_cpp_string("${TEMPLATES_DIR}/report.html" "REPORT" REPORT_TEMPLATE)
 file_to_cpp_string("${TEMPLATES_DIR}/letter.html" "LETTER" LETTER_TEMPLATE)
 file_to_cpp_string("${TEMPLATES_DIR}/sales_summary.html" "SALES_SUMMARY" SALES_SUMMARY_TEMPLATE)
 file_to_cpp_string("${TEMPLATES_DIR}/purchase_summary.html" "PURCHASE_SUMMARY" PURCHASE_SUMMARY_TEMPLATE)
+file_to_cpp_string("${TEMPLATES_DIR}/poison_order.html" "POISON_ORDER" POISON_ORDER_TEMPLATE)
+file_to_cpp_string("${TEMPLATES_DIR}/billing_statement.html" "BILLING_STATEMENT" BILLING_STATEMENT_TEMPLATE)
+file_to_cpp_string("${TEMPLATES_DIR}/purchase_order.html" "PURCHASE_ORDER" PURCHASE_ORDER_TEMPLATE)
 
 # Generate the header file
 file(WRITE "${OUTPUT_FILE}" 
@@ -51,6 +54,18 @@ inline const char* getSalesSummaryTemplate() {
 
 inline const char* getPurchaseSummaryTemplate() {
     return ${PURCHASE_SUMMARY_TEMPLATE};
+}
+
+inline const char* getPoisonOrderTemplate() {
+    return ${POISON_ORDER_TEMPLATE};
+}
+
+inline const char* getBillingStatementTemplate() {
+    return ${BILLING_STATEMENT_TEMPLATE};
+}
+
+inline const char* getPurchaseOrderTemplate() {
+    return ${PURCHASE_ORDER_TEMPLATE};
 }
 
 } // namespace TemplateStrings

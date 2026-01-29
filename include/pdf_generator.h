@@ -1,7 +1,10 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <mutex>
+
+namespace htmlToPDF {
 
 struct PdfConfig {
     std::string pageSize = "A4";
@@ -15,6 +18,16 @@ struct PdfConfig {
 // Thread-safe PDF generator (serializes all conversions via mutex)
 class PdfGenerator {
 public:
+    // Settings struct for more flexible configuration
+    struct PdfSettings {
+        std::string pageSize = "A4";
+        std::string orientation = "Portrait";  // "Portrait" or "Landscape"
+        int marginTop = 10;
+        int marginBottom = 10;
+        int marginLeft = 10;
+        int marginRight = 10;
+    };
+
     PdfGenerator();
     explicit PdfGenerator(const PdfConfig& config);
     ~PdfGenerator();
@@ -25,6 +38,12 @@ public:
     
     // Generate PDF from HTML content (string)
     bool generate(const std::string& htmlContent, const std::string& outputPath);
+    
+    // Generate PDF from HTML string with settings
+    bool generateFromHtml(const std::string& htmlContent, const std::string& outputPath, const PdfSettings& settings);
+    
+    // Generate multi-page PDF from multiple HTML strings
+    bool generateMultiPagePdf(const std::vector<std::string>& htmlPages, const std::string& outputPath, const PdfSettings& settings);
     
     // Generate PDF from HTML file
     bool generateFromFile(const std::string& htmlPath, const std::string& outputPath);
@@ -39,4 +58,12 @@ private:
     
     bool doConvert(const std::string& htmlContent, const std::string& outputPath, 
                    std::string* outputBuffer = nullptr);
+    bool doConvertWithSettings(const std::string& htmlContent, const std::string& outputPath, 
+                               const PdfSettings& settings);
 };
+
+} // namespace htmlToPDF
+
+// For backward compatibility
+using PdfGenerator = htmlToPDF::PdfGenerator;
+using PdfConfig = htmlToPDF::PdfConfig;

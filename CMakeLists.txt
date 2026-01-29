@@ -63,6 +63,9 @@ set(TEMPLATE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/templates/letter.html
     ${CMAKE_CURRENT_SOURCE_DIR}/templates/sales_summary.html
     ${CMAKE_CURRENT_SOURCE_DIR}/templates/purchase_summary.html
+    ${CMAKE_CURRENT_SOURCE_DIR}/templates/poison_order.html
+    ${CMAKE_CURRENT_SOURCE_DIR}/templates/billing_statement.html
+    ${CMAKE_CURRENT_SOURCE_DIR}/templates/purchase_order.html
 )
 
 set(GENERATED_TEMPLATES_HEADER ${CMAKE_CURRENT_BINARY_DIR}/generated/template_strings.h)
@@ -92,6 +95,7 @@ add_library(htmlToPDF STATIC
     src/pdf_generator.cpp
     src/sales_summary_builder.cpp
     src/purchase_summary_builder.cpp
+    src/invoice_builder.cpp
     ${GENERATED_TEMPLATES_HEADER}  # Add as source so it's tracked as dependency
 )
 

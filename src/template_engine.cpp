@@ -131,3 +131,15 @@ std::string TemplateEngine::getSalesSummaryTemplate() {
 std::string TemplateEngine::getPurchaseSummaryTemplate() {
     return TemplateStrings::getPurchaseSummaryTemplate();
 }
+
+std::string TemplateEngine::getPoisonOrderTemplate() {
+    return TemplateStrings::getPoisonOrderTemplate();
+}
+
+std::string TemplateEngine::getBillingStatementTemplate() {
+    return TemplateStrings::getBillingStatementTemplate();
+}
+
+std::string TemplateEngine::getPurchaseOrderTemplate() {
+    return TemplateStrings::getPurchaseOrderTemplate();
+}

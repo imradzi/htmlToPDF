@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+        font-family: Arial, sans-serif; 
+        font-size: 9pt; 
+        color: #333; 
+        padding: 15px;
+        line-height: 1.3;
+    }
+    
+    .letterhead {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+        padding: 10px;
+        background: {{letterhead_fill_color}};
+        border: 1px solid {{box_color}};
+    }
+    .letterhead-left { flex: 1; }
+    .outlet-name { font-size: 14pt; font-weight: bold; }
+    .outlet-name2 { font-size: 11pt; }
+    .outlet-address { font-size: 9pt; margin-top: 5px; }
+    .outlet-reg { font-size: 8pt; color: #666; }
+    
+    .header-section {
+        display: flex;
+        justify-content: space-between;
+        margin: 10px 0;
+    }
+    
+    .party-box {
+        width: 48%;
+        padding: 8px;
+        border: 1px solid {{box_color}};
+        background: #fafafa;
+    }
+    .party-label { font-size: 8pt; color: #666; margin-bottom: 3px; }
+    .party-name { font-weight: bold; }
+    .party-address { font-size: 8pt; white-space: pre-line; }
+    
+    .doc-info-box {
+        text-align: right;
+        padding: 10px;
+        border: 2px solid {{theme_color}};
+        background: {{fill_color}};
+    }
+    .doc-type { font-size: 12pt; font-weight: bold; color: #333; }
+    .doc-details { font-size: 9pt; margin-top: 5px; }
+    .doc-details div { margin: 2px 0; }
+    
+    .items-section { margin: 15px 0; }
+    .items-label { font-size: 9pt; margin-bottom: 5px; }
+    
+    table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+    
+    th {
+        background: #3c4248;
+        color: white;
+        padding: 5px 4px;
+        text-align: left;
+        border: 1px solid #555;
+    }
+    th.amt { text-align: right; }
+    th.ctr { text-align: center; }
+    
+    td {
+        padding: 3px 4px;
+        border: 1px solid #ddd;
+        vertical-align: top;
+    }
+    td.amt { text-align: right; }
+    td.ctr { text-align: center; }
+    
+    tr:nth-child(even) { background: #f9f9f9; }
+    
+    .footer-section {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+        font-size: 8pt;
+    }
+    .footer-box {
+        width: 48%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        min-height: 120px;
+    }
+    .footer-label { 
+        font-weight: bold; 
+        margin-bottom: 8px; 
+        border-bottom: 1px solid #ddd; 
+        padding-bottom: 3px; 
+    }
+    .footer-content { font-size: 7pt; }
+    .footer-content div { margin: 3px 0; }
+    
+    .signature-line {
+        border-top: 1px solid #333;
+        margin-top: 40px;
+        padding-top: 5px;
+        text-align: center;
+        font-size: 7pt;
+    }
+    
+    .page-info { text-align: right; font-size: 8pt; color: #666; margin-top: 10px; }
+</style>
+</head>
+<body>
+    <div class="letterhead">
+        <div class="letterhead-left">
+            <div class="outlet-name">{{outlet_name}}</div>
+            {{#if outlet_name2}}<div class="outlet-name2">{{outlet_name2}}</div>{{/if}}
+            <div class="outlet-address">{{outlet_address}}</div>
+            {{#if outlet_reg_no}}<div class="outlet-reg">Reg No: {{outlet_reg_no}}</div>{{/if}}
+        </div>
+    </div>
+
+    <div class="header-section">
+        <div class="party-box">
+            <div class="party-label">Delivery Address:</div>
+            <div class="party-name">{{deliver_to_name}}</div>
+            <div class="party-address">{{deliver_to_address}}</div>
+            {{#if show_account_id}}<div style="margin-top: 5px;">Account No: {{account_id}}</div>{{/if}}
+        </div>
+        
+        <div class="doc-info-box">
+            <div class="doc-type">{{title}}</div>
+            <div class="doc-details">
+                <div>{{transaction_date}}</div>
+                <div>INV NO: {{ref_no}}</div>
+                <div>DO NO: {{id}}</div>
+                <div>Page: {{page_no}} of {{total_pages}}</div>
+                <div>Term: {{term}}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="items-section">
+        <div class="items-label">Items:</div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 25px;" class="ctr">#</th>
+                    <th>CODE</th>
+                    <th>MAL</th>
+                    <th>NAME</th>
+                    <th>BATCH</th>
+                    <th>EXPIRY</th>
+                    <th class="amt">QTY</th>
+                    <th>UOM</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#each items}}
+                <tr>
+                    <td class="ctr">{{line_no}}</td>
+                    <td>{{code}}</td>
+                    <td>{{mal}}</td>
+                    <td>{{name}}</td>
+                    <td>{{batch_no}}</td>
+                    <td>{{expiry_date}}</td>
+                    <td class="amt">{{quantity}}</td>
+                    <td>{{uom}}</td>
+                </tr>
+                {{/each}}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer-section">
+        <div class="footer-box">
+            <div class="footer-label">Received by</div>
+            <div class="footer-content">
+                <div>Purpose for which required: {{purpose_of_sale}}</div>
+                {{#each receiver_notes}}<div>{{text}}</div>{{/each}}
+            </div>
+            <div class="signature-line">(Signature and stamp of Pharmacist/Doctor/Authorized Person)</div>
+        </div>
+        
+        <div class="footer-box">
+            <div class="footer-label">Supplied By</div>
+            <div class="footer-content">
+                {{#each supplier_notes}}<div>{{text}}</div>{{/each}}
+            </div>
+            <div class="signature-line">Authorized for {{outlet_name}}</div>
+        </div>
+    </div>
+
+    <div class="page-info">Generated by PharmaPOS</div>
+</body>
+</html>

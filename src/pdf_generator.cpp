@@ -5,6 +5,8 @@
 #include <sstream>
 #include <cstring>
 
+namespace htmlToPDF {
+
 bool PdfGenerator::initialized_ = false;
 std::mutex PdfGenerator::mutex_;
 
@@ -45,6 +47,62 @@ void PdfGenerator::deinitLibrary() {
 
 bool PdfGenerator::generate(const std::string& htmlContent, const std::string& outputPath) {
     return doConvert(htmlContent, outputPath, nullptr);
+}
+
+bool PdfGenerator::generateFromHtml(const std::string& htmlContent, const std::string& outputPath, const PdfSettings& settings) {
+    return doConvertWithSettings(htmlContent, outputPath, settings);
+}
+
+bool PdfGenerator::generateMultiPagePdf(const std::vector<std::string>& htmlPages, const std::string& outputPath, const PdfSettings& settings) {
+    if (htmlPages.empty()) return false;
+    
+    // Serialize all PDF generation
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    if (!initialized_) {
+        std::cerr << "Library not initialized" << std::endl;
+        return false;
+    }
+    
+    // Create global settings
+    wkhtmltopdf_global_settings* gs = wkhtmltopdf_create_global_settings();
+    wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
+    wkhtmltopdf_set_global_setting(gs, "size.pageSize", settings.pageSize.c_str());
+    wkhtmltopdf_set_global_setting(gs, "orientation", settings.orientation.c_str());
+    
+    std::string marginTop = std::to_string(settings.marginTop) + "mm";
+    std::string marginBottom = std::to_string(settings.marginBottom) + "mm";
+    std::string marginLeft = std::to_string(settings.marginLeft) + "mm";
+    std::string marginRight = std::to_string(settings.marginRight) + "mm";
+    
+    wkhtmltopdf_set_global_setting(gs, "margin.top", marginTop.c_str());
+    wkhtmltopdf_set_global_setting(gs, "margin.bottom", marginBottom.c_str());
+    wkhtmltopdf_set_global_setting(gs, "margin.left", marginLeft.c_str());
+    wkhtmltopdf_set_global_setting(gs, "margin.right", marginRight.c_str());
+    
+    // Create converter
+    wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);
+    
+    // Add each HTML page as a separate object
+    for (const auto& html : htmlPages) {
+        wkhtmltopdf_object_settings* os = wkhtmltopdf_create_object_settings();
+        wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
+        wkhtmltopdf_add_object(converter, os, html.c_str());
+    }
+    
+    // Perform conversion
+    bool success = (wkhtmltopdf_convert(converter) == 1);
+    
+    if (!success) {
+        std::cerr << "Multi-page PDF conversion failed" << std::endl;
+    } else {
+        std::cout << "Multi-page PDF generated: " << outputPath << std::endl;
+    }
+    
+    // Cleanup
+    wkhtmltopdf_destroy_converter(converter);
+    
+    return success;
 }
 
 bool PdfGenerator::generateFromFile(const std::string& htmlPath, const std::string& outputPath) {
@@ -125,3 +183,54 @@ bool PdfGenerator::doConvert(const std::string& htmlContent, const std::string& 
     
     return success;
 }
+
+bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const std::string& outputPath,
+                                          const PdfSettings& settings) {
+    // Serialize all PDF generation
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    if (!initialized_) {
+        std::cerr << "Library not initialized" << std::endl;
+        return false;
+    }
+    
+    // Create global settings
+    wkhtmltopdf_global_settings* gs = wkhtmltopdf_create_global_settings();
+    wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
+    wkhtmltopdf_set_global_setting(gs, "size.pageSize", settings.pageSize.c_str());
+    wkhtmltopdf_set_global_setting(gs, "orientation", settings.orientation.c_str());
+    
+    std::string marginTop = std::to_string(settings.marginTop) + "mm";
+    std::string marginBottom = std::to_string(settings.marginBottom) + "mm";
+    std::string marginLeft = std::to_string(settings.marginLeft) + "mm";
+    std::string marginRight = std::to_string(settings.marginRight) + "mm";
+    
+    wkhtmltopdf_set_global_setting(gs, "margin.top", marginTop.c_str());
+    wkhtmltopdf_set_global_setting(gs, "margin.bottom", marginBottom.c_str());
+    wkhtmltopdf_set_global_setting(gs, "margin.left", marginLeft.c_str());
+    wkhtmltopdf_set_global_setting(gs, "margin.right", marginRight.c_str());
+    
+    // Create object settings
+    wkhtmltopdf_object_settings* os = wkhtmltopdf_create_object_settings();
+    wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
+    
+    // Create converter
+    wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);
+    wkhtmltopdf_add_object(converter, os, htmlContent.c_str());
+    
+    // Perform conversion
+    bool success = (wkhtmltopdf_convert(converter) == 1);
+    
+    if (!success) {
+        std::cerr << "PDF conversion failed" << std::endl;
+    } else {
+        std::cout << "PDF generated: " << outputPath << std::endl;
+    }
+    
+    // Cleanup
+    wkhtmltopdf_destroy_converter(converter);
+    
+    return success;
+}
+
+} // namespace htmlToPDF

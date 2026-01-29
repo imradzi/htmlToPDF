@@ -41,25 +41,84 @@ app.engine('html', hbs.__express);
 
 // Mock data for invoice template
 const mockInvoiceData = {
-  letterhead_image: '/templates/letterhead.png',
-  invoice_number: 'INV-2024-001',
-  date: 'January 28, 2026',
-  due_date: 'February 28, 2026',
-  customer_name: 'ABC Company Sdn Bhd',
-  customer_address: '123 Jalan Sultan, 50000 Kuala Lumpur, Malaysia',
+  // Style colors
+  letterhead_fill_color: '#f5f5f5',
+  box_color: '#ddd',
+  theme_color: '#2c3e50',
+  fill_color: '#e8f4f8',
+  
+  // Outlet info
+  outlet_name: 'PharmaPOS Main Branch',
+  outlet_name2: 'Pharmacy & Healthcare',
+  outlet_address: '123 Jalan Sultan, Bukit Bintang\n50000 Kuala Lumpur, Malaysia',
+  outlet_reg_no: '201901012345',
+  outlet_gst_reg_no: 'GST-001234567',
+  
+  // e-Invoice (optional)
+  has_e_invoice: true,
+  e_invoice_qr: 'https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=INV-2026-0042-LHDN-EINVOICE',
+  
+  // Document type flags
+  is_invoice: true,
+  is_purchase_order: false,
+  is_goods_received: false,
+  is_goods_return: false,
+  is_draft: false,
+  
+  // Party info
+  party_label: 'Invoice To:',
+  invoice_to_name: 'ABC Company Sdn Bhd',
+  invoice_to_address: '456 Jalan Ampang\n50450 Kuala Lumpur\nMalaysia',
+  invoice_to_id: 'CUST-001',
+  show_account_id: true,
+  
+  // Delivery address (optional)
+  show_deliver_to: true,
+  deliver_to_name: 'TESTING DELIVERY',
+  deliver_to_address: '123 Delivery Lane\n50000 Kuala Lumpur\nMalaysia',
+  
+  // Document info
+  document_type: 'INVOICE',
+  transaction_date: '28/01/2026',
+  ref_title: 'INV No:',
+  ref_no: 'INV-2026-0042',
+  id: '',
+  page_no: '1',
+  total_pages: '1',
+  term: 'Net 30',
+  
+  // Items label
+  items_label: 'Items sold:',
+  
+  // Display flags
+  show_code: true,
+  show_mal: true,
+  show_batch_expiry: true,
+  show_bonus: false,
+  show_gst: true,
+  show_srp: false,
+  show_discount: true,
+  
+  // Items
   items: [
-    { description: 'Product A - Premium Widget', qty: 10, unit_price: 'RM 50.00', amount: 'RM 500.00' },
-    { description: 'Product B - Standard Gadget', qty: 5, unit_price: 'RM 75.00', amount: 'RM 375.00' },
-    { description: 'Service Charge - Installation', qty: 1, unit_price: 'RM 150.00', amount: 'RM 150.00' }
+    { line_no: '1', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '2', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '3', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true }
   ],
-  subtotal: 'RM 1,025.00',
-  tax_rate: '6%',
-  tax_amount: 'RM 61.50',
-  currency: 'RM',
-  total: '1,086.50',
-  payment_terms: 'Net 30 days',
-  bank_name: 'Maybank',
-  bank_account: '1234-5678-9012'
+  
+  // Totals
+  total_discount: '6.25',
+  total_gst: '10.72',
+  total_amount: '189.47',
+  
+  // Footer
+  notes: [
+    { text: 'Thank you for your business!' },
+    { text: 'Payment due within 30 days.' }
+  ],
+  remarks: [
+    { text: 'Goods sold are not returnable.' }
+  ]
 };
 
 // Mock data for letter template
@@ -187,6 +246,208 @@ const mockSalesSummaryData = {
   customer_total_margin: '34.8%'
 };
 
+// Mock data for billing statement template
+const mockBillingStatementData = {
+  // Style colors
+  letterhead_fill_color: '#f5f5f5',
+  box_color: '#ddd',
+  theme_color: '#2c3e50',
+  fill_color: '#e8f4f8',
+  
+  // Outlet info
+  outlet_name: 'PharmaPOS Main Branch',
+  outlet_name2: 'Pharmacy & Healthcare',
+  outlet_address: '123 Jalan Sultan, Bukit Bintang\n50000 Kuala Lumpur, Malaysia',
+  outlet_reg_no: '201901012345',
+  
+  // Document info
+  title: 'BILLING STATEMENT',
+  period: 'January 2026',
+  total_amount: 'RM 15,680.50',
+  term: 'Net 30',
+  
+  // Debtor info
+  debtor_id: 'CUST-001',
+  debtor_name: 'ABC Clinic Sdn Bhd',
+  debtor_address: '456 Jalan Ampang\n50450 Kuala Lumpur\nMalaysia',
+  
+  // Customer summary
+  customers: [
+    { name: 'Ahmad bin Ali', ic: '850101-14-5521', total: 'RM 3,250.00' },
+    { name: 'Siti binti Hassan', ic: '900215-10-6632', total: 'RM 4,180.50' },
+    { name: 'Tan Wei Ming', ic: '881030-08-4455', total: 'RM 8,250.00' }
+  ],
+  
+  // Detailed items (optional)
+  show_details: true,
+  all_items: [
+    { customer_name: 'Ahmad bin Ali', item: 'Paracetamol 500mg x 100', sales_ids: 'INV-2026-001', quantity: '5', amount: 'RM 125.00' },
+    { customer_name: 'Ahmad bin Ali', item: 'Vitamin C 1000mg x 60', sales_ids: 'INV-2026-001', quantity: '3', amount: 'RM 89.00' },
+    { customer_name: 'Siti binti Hassan', item: 'Blood Pressure Monitor', sales_ids: 'INV-2026-015', quantity: '1', amount: 'RM 280.00' },
+    { customer_name: 'Tan Wei Ming', item: 'Insulin Pen x 5', sales_ids: 'INV-2026-022', quantity: '10', amount: 'RM 1,500.00' }
+  ]
+};
+
+// Mock data for poison order template
+const mockPoisonOrderData = {
+  // Style colors
+  letterhead_fill_color: '#f5f5f5',
+  box_color: '#ddd',
+  theme_color: '#c0392b',
+  fill_color: '#fce4e4',
+  
+  // Outlet info
+  outlet_name: 'PharmaPOS Main Branch',
+  outlet_name2: 'Pharmacy & Healthcare',
+  outlet_address: '123 Jalan Sultan, Bukit Bintang, 50000 Kuala Lumpur',
+  outlet_reg_no: '201901012345',
+  
+  // Delivery info
+  deliver_to_name: 'XYZ Medical Centre',
+  deliver_to_address: '789 Jalan Hospital\n40000 Shah Alam\nSelangor',
+  show_account_id: true,
+  account_id: 'ACC-MED-001',
+  
+  // Document info
+  title: 'POISON ORDER',
+  transaction_date: '28/01/2026',
+  ref_no: 'INV-2026-0145',
+  id: 'DO-2026-0089',
+  page_no: '1',
+  total_pages: '1',
+  term: 'Net 14',
+  
+  // Items
+  items: [
+    { line_no: '1', code: 'PSN-001', mal: 'MAL19985432A', name: 'Codeine Phosphate 30mg', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '100', uom: 'TAB' },
+    { line_no: '2', code: 'PSN-002', mal: 'MAL19987654A', name: 'Morphine Sulphate 10mg', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '50', uom: 'AMP' },
+    { line_no: '3', code: 'PSN-003', mal: 'MAL19989876A', name: 'Pethidine HCl 50mg/ml', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '20', uom: 'AMP' }
+  ],
+  
+  // Footer
+  purpose_of_sale: 'Medical Treatment',
+  receiver_notes: [
+    { text: 'Name: Dr. Ahmad bin Hassan' },
+    { text: 'MMC No: 12345' },
+    { text: 'Clinic: XYZ Medical Centre' }
+  ],
+  supplier_notes: [
+    { text: 'Pharmacist: Lee Mei Ling' },
+    { text: 'License No: PH12345' }
+  ]
+};
+
+// Mock data for purchase order template
+const mockPurchaseOrderData = {
+  // Style colors
+  letterhead_fill_color: '#f5f5f5',
+  box_color: '#ddd',
+  theme_color: '#2c3e50',
+  fill_color: '#e8f4f8',
+  
+  // Outlet info
+  outlet_name: 'PharmaPOS Main Branch',
+  outlet_name2: 'Pharmacy & Healthcare',
+  outlet_address: '123 Jalan Sultan, Bukit Bintang, 50000 Kuala Lumpur',
+  outlet_reg_no: '201901012345',
+  outlet_gst_reg_no: 'GST-001234567',
+  
+  // Document type flags
+  is_purchase_order: true,
+  is_goods_received: false,
+  is_goods_return: false,
+  
+  // Supplier info
+  invoice_to_name: 'ABC Pharma Supplies Sdn Bhd',
+  invoice_to_address: '456 Industrial Park\n47500 Subang Jaya\nSelangor',
+  
+  // Document info
+  document_type: 'PURCHASE ORDER',
+  transaction_date: '28/01/2026',
+  id: 'PO-2026-0045',
+  ref_title: 'Quote Ref:',
+  ref_no: 'QT-2026-0012',
+  page_no: '1',
+  total_pages: '1',
+  term: 'Net 30',
+  
+  // Display flags
+  show_code: true,
+  show_mal: true,
+  show_batch_expiry: false,
+  show_gst: true,
+  show_srp: true,
+  
+  // Items
+  items: [
+    { line_no: '1', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg x 100', quantity: '50', bonus: '5', price: '12.00', net_price: '11.50', selling_price: '18.00', margin: '36%', gst: '28.75', amount: '603.75', show_code: true, show_mal: true, show_gst: true, show_srp: true },
+    { line_no: '2', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg x 100', quantity: '30', bonus: '3', price: '15.00', net_price: '14.25', selling_price: '22.00', margin: '35%', gst: '21.38', amount: '448.88', show_code: true, show_mal: true, show_gst: true, show_srp: true },
+    { line_no: '3', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex x 60', quantity: '100', bonus: '10', price: '8.00', net_price: '7.60', selling_price: '12.00', margin: '37%', gst: '38.00', amount: '798.00', show_code: true, show_mal: true, show_gst: true, show_srp: true }
+  ],
+  
+  // Totals
+  total_gst: '88.13',
+  total_amount: '1,850.63',
+  
+  // Remarks
+  has_remarks: true,
+  remarks: [
+    { text: 'Please deliver before 15/02/2026' },
+    { text: 'Contact person: Ahmad (012-3456789)' }
+  ]
+};
+
+// Mock data for purchase summary template
+const mockPurchaseSummaryData = {
+  // Style colors
+  letterhead_fill_color: '#f5f5f5',
+  box_color: '#ddd',
+  
+  // Header
+  title: 'PURCHASE SUMMARY REPORT',
+  date_computed: '28/01/2026 14:30:00',
+  
+  // Outlet info
+  outlet_code: 'KL001',
+  outlet_name: 'PharmaPOS Main Branch',
+  outlet_name2: 'Pharmacy & Healthcare',
+  outlet_address_1: '123 Jalan Sultan',
+  outlet_address_2: 'Bukit Bintang',
+  outlet_address_3: '50000 Kuala Lumpur',
+  outlet_address_4: 'Malaysia',
+  
+  // Date range
+  from_date: '01/01/2026',
+  to_date: '28/01/2026',
+  
+  // Categories
+  categories: [
+    { name: 'Medicines', gst: '1,250.00', amount: '25,000.00' },
+    { name: 'Supplements', gst: '680.00', amount: '13,600.00' },
+    { name: 'Medical Devices', gst: '450.00', amount: '9,000.00' },
+    { name: 'Personal Care', gst: '320.00', amount: '6,400.00' }
+  ],
+  total_category_gst: '2,700.00',
+  total_category_amount: '54,000.00',
+  
+  // Payment types
+  payment_types: [
+    { name: 'Bank Transfer', amount: '35,000.00' },
+    { name: 'Credit Term', amount: '15,000.00' },
+    { name: 'Cash', amount: '4,000.00' }
+  ],
+  return_cancelled: '-500.00',
+  
+  // Suppliers
+  suppliers: [
+    { name: 'ABC Pharma Supplies', gst: '1,200.00', amount: '24,000.00' },
+    { name: 'XYZ Medical Distributors', gst: '850.00', amount: '17,000.00' },
+    { name: 'Healthcare Wholesale', gst: '650.00', amount: '13,000.00' }
+  ],
+  total_supplier_gst: '2,700.00',
+  total_supplier_amount: '54,000.00'
+};
+
 // Routes
 app.get('/', (req, res) => {
   res.send(`
@@ -231,6 +492,22 @@ app.get('/', (req, res) => {
           <a href="/sales-summary">Sales Summary Template</a>
           <span class="description">- Detailed sales summary report</span>
         </li>
+        <li>
+          <a href="/billing-statement">Billing Statement Template</a>
+          <span class="description">- Customer billing with itemized details</span>
+        </li>
+        <li>
+          <a href="/poison-order">Poison Order Template</a>
+          <span class="description">- Controlled substance delivery order</span>
+        </li>
+        <li>
+          <a href="/purchase-order">Purchase Order Template</a>
+          <span class="description">- Supplier purchase order with GST</span>
+        </li>
+        <li>
+          <a href="/purchase-summary">Purchase Summary Template</a>
+          <span class="description">- Purchase summary by category/supplier</span>
+        </li>
       </ul>
       <hr style="margin-top: 40px;">
       <p style="color: #666; font-size: 12px;">
@@ -257,6 +534,22 @@ app.get('/sales-summary', (req, res) => {
   res.render('sales_summary.html', mockSalesSummaryData);
 });
 
+app.get('/billing-statement', (req, res) => {
+  res.render('billing_statement.html', mockBillingStatementData);
+});
+
+app.get('/poison-order', (req, res) => {
+  res.render('poison_order.html', mockPoisonOrderData);
+});
+
+app.get('/purchase-order', (req, res) => {
+  res.render('purchase_order.html', mockPurchaseOrderData);
+});
+
+app.get('/purchase-summary', (req, res) => {
+  res.render('purchase_summary.html', mockPurchaseSummaryData);
+});
+
 // Start server
 const server = app.listen(PORT, () => {
   console.log(`\n✓ Server running at http://localhost:${PORT}`);
@@ -266,6 +559,10 @@ const server = app.listen(PORT, () => {
   console.log(`  - http://localhost:${PORT}/letter             (Letter Template)`);
   console.log(`  - http://localhost:${PORT}/report             (Report Template)`);
   console.log(`  - http://localhost:${PORT}/sales-summary      (Sales Summary Template)`);
+  console.log(`  - http://localhost:${PORT}/billing-statement  (Billing Statement Template)`);
+  console.log(`  - http://localhost:${PORT}/poison-order       (Poison Order Template)`);
+  console.log(`  - http://localhost:${PORT}/purchase-order     (Purchase Order Template)`);
+  console.log(`  - http://localhost:${PORT}/purchase-summary   (Purchase Summary Template)`);
   console.log(`\n✓ BrowserSync enabled - browser will auto-refresh on changes`);
 });
 

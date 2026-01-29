@@ -121,21 +121,6 @@
             {{#if outlet_reg_no}}<div class="outlet-reg">Reg No: {{outlet_reg_no}}</div>{{/if}}
             {{#if outlet_gst_reg_no}}<div class="outlet-reg">GST No: {{outlet_gst_reg_no}}</div>{{/if}}
         </div>
-        {{#if has_e_invoice}}
-        <div class="qr-code">
-            <img src="{{e_invoice_qr}}" alt="e-Invoice QR" />
-        </div>
-        {{/if}}
-    </div>
-
-    <div class="header-section">
-        <div class="party-box">
-            <div class="party-label">{{party_label}}</div>
-            <div class="party-name">{{invoice_to_name}}</div>
-            <div class="party-address">{{invoice_to_address}}</div>
-            {{#if show_account_id}}<div class="party-id">Account No: {{invoice_to_id}}</div>{{/if}}
-        </div>
-        
         <div class="doc-info-box">
             <div class="doc-type">{{#if is_draft}}DRAFT {{/if}}{{document_type}}</div>
             <div class="doc-details">
@@ -145,16 +130,33 @@
                 <div>Page: {{page_no}} of {{total_pages}}</div>
                 <div>Term: {{term}}</div>
             </div>
+            {{#if has_e_invoice}}
+            <div class="qr-code">
+                <img src="{{e_invoice_qr}}" alt="e-Invoice QR" />
+            </div>
+        {{/if}}
+
         </div>
+
+    </div>
+
+    <div class="header-section">
+        <div class="party-box">
+            <div class="party-label">{{party_label}}</div>
+            <div class="party-name">{{invoice_to_name}}</div>
+            <div class="party-address">{{invoice_to_address}}</div>
+            {{#if show_account_id}}<div class="party-id">Account No: {{invoice_to_id}}</div>{{/if}}
+        </div>
+        {{#if show_deliver_to}}
+        <div class="party-box" style="width: 45%; margin-bottom: 10px;">
+            <div class="party-label">Deliver To:</div>
+            <div class="party-name">{{deliver_to_name}}</div>
+            <div class="party-address">{{deliver_to_address}}</div>
+        </div>
+        {{/if}}
+        
     </div>
     
-    {{#if show_deliver_to}}
-    <div class="party-box" style="width: 45%; margin-bottom: 10px;">
-        <div class="party-label">Deliver To:</div>
-        <div class="party-name">{{deliver_to_name}}</div>
-        <div class="party-address">{{deliver_to_address}}</div>
-    </div>
-    {{/if}}
 
     <div class="items-section">
         <div class="items-label">{{items_label}}</div>

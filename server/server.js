@@ -2,6 +2,17 @@ const express = require('express');
 const hbs = require('hbs');
 const path = require('path');
 const browserSync = require('browser-sync').create();
+const QRCode = require('qrcode');
+
+// Helper function to generate QR code as base64 data URI
+async function generateQRBase64(text) {
+  try {
+    return await QRCode.toDataURL(text, { width: 80, margin: 1 });
+  } catch (err) {
+    console.error('QR generation error:', err);
+    return '';
+  }
+}
 
 const app = express();
 const PORT = 3000;
@@ -41,6 +52,10 @@ app.engine('html', hbs.__express);
 
 // Mock data for invoice template
 const mockInvoiceData = {
+  // Page setup - A4 orientation: 'portrait' or 'landscape'
+  orientation: 'portrait',
+  is_landscape: false,
+  
   // Style colors
   letterhead_fill_color: '#f5f5f5',
   box_color: '#ddd',
@@ -54,9 +69,9 @@ const mockInvoiceData = {
   outlet_reg_no: '201901012345',
   outlet_gst_reg_no: 'GST-001234567',
   
-  // e-Invoice (optional)
+  // e-Invoice (optional) - QR code will be generated dynamically
   has_e_invoice: true,
-  e_invoice_qr: 'https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=INV-2026-0042-LHDN-EINVOICE',
+  e_invoice_qr: '', // Will be populated at runtime
   
   // Document type flags
   is_invoice: true,
@@ -103,7 +118,64 @@ const mockInvoiceData = {
   items: [
     { line_no: '1', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
     { line_no: '2', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
-    { line_no: '3', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true }
+    { line_no: '3', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '4', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '5', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '6', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '7', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '8', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '9', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '10', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '11', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '12', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '13', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '14', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '15', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '16', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '17', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '18', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '19', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '20', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '21', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '22', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '23', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '24', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '25', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '26', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '27', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '28', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '29', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '30', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '31', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '32', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '33', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '34', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '35', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '36', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '37', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '38', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '39', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '40', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '41', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '42', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '43', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '44', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '45', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '46', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '47', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '48', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '49', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '50', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '51', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '52', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '53', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '54', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '55', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '56', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '57', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '58', code: 'MED-001', mal: 'MAL19991234A', name: 'Paracetamol 500mg', packing: '100s', batch_no: 'BN2025A', expiry_date: '12/2027', quantity: '5', price: '12.00', discount: '0.00', gst: '3.60', amount: '63.60', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '59', code: 'MED-002', mal: 'MAL19995678A', name: 'Ibuprofen 400mg', packing: '100s', batch_no: 'BN2025B', expiry_date: '06/2027', quantity: '3', price: '15.00', discount: '2.25', gst: '2.56', amount: '45.31', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true },
+    { line_no: '60', code: 'MED-003', mal: 'MAL19999012A', name: 'Vitamin B Complex', packing: '60s', batch_no: 'BN2025C', expiry_date: '09/2027', quantity: '10', price: '8.00', discount: '4.00', gst: '4.56', amount: '80.56', show_code: true, show_mal: true, show_batch_expiry: true, show_gst: true, show_discount: true }
   ],
   
   // Totals
@@ -123,6 +195,10 @@ const mockInvoiceData = {
 
 // Mock data for letter template
 const mockLetterData = {
+  // Page setup - A4 orientation
+  orientation: 'portrait',
+  is_landscape: false,
+  
   letterhead_image: '/templates/letterhead.png',
   sender_name: 'John Smith',
   sender_address: '456 Business Park, 47800 Petaling Jaya, Selangor',
@@ -135,6 +211,10 @@ const mockLetterData = {
 
 // Mock data for report template
 const mockReportData = {
+  // Page setup - A4 orientation
+  orientation: 'portrait',
+  is_landscape: false,
+  
   letterhead_image: '/templates/letterhead.png',
   report_title: 'Monthly Sales Performance Report',
   date: 'January 28, 2026',
@@ -154,6 +234,10 @@ const mockReportData = {
 
 // Mock data for sales summary template
 const mockSalesSummaryData = {
+  // Page setup - A4 orientation
+  orientation: 'portrait',
+  is_landscape: false,
+  
   // Style colors
   letterhead_fill_color: '#f5f5f5',
   box_color: '#ddd',
@@ -224,9 +308,11 @@ const mockSalesSummaryData = {
   
   // Summary
   return_cancelled: '150.00',
-  is_cash_sales: true,
+  show_starting_cash: true,
   starting_cash: '500.00',
+  show_cash_in_drawer: true,
   cash_in_drawer: '2,500.00',
+  show_closing_cash: true,
   closing_cash: '2,450.00',
   
   // Membership
@@ -248,6 +334,10 @@ const mockSalesSummaryData = {
 
 // Mock data for billing statement template
 const mockBillingStatementData = {
+  // Page setup - A4 orientation
+  orientation: 'portrait',
+  is_landscape: false,
+  
   // Style colors
   letterhead_fill_color: '#f5f5f5',
   box_color: '#ddd',
@@ -290,6 +380,10 @@ const mockBillingStatementData = {
 
 // Mock data for poison order template
 const mockPoisonOrderData = {
+  // Page setup - A4 orientation
+  orientation: 'portrait',
+  is_landscape: false,
+  
   // Style colors
   letterhead_fill_color: '#f5f5f5',
   box_color: '#ddd',
@@ -339,6 +433,10 @@ const mockPoisonOrderData = {
 
 // Mock data for purchase order template
 const mockPurchaseOrderData = {
+  // Page setup - A4 orientation
+  orientation: 'portrait',
+  is_landscape: false,
+  
   // Style colors
   letterhead_fill_color: '#f5f5f5',
   box_color: '#ddd',
@@ -399,6 +497,10 @@ const mockPurchaseOrderData = {
 
 // Mock data for purchase summary template
 const mockPurchaseSummaryData = {
+  // Page setup - A4 orientation
+  orientation: 'portrait',
+  is_landscape: false,
+  
   // Style colors
   letterhead_fill_color: '#f5f5f5',
   box_color: '#ddd',
@@ -474,38 +576,46 @@ app.get('/', (req, res) => {
     </head>
     <body>
       <h1>📄 Template Preview Server</h1>
-      <p>Select a template to preview:</p>
+      <p>Select a template to preview (A4 size):</p>
       <ul>
         <li>
-          <a href="/invoice">Invoice Template</a>
+          <a href="/invoice">Invoice (Portrait)</a>
+          <a href="/invoice-landscape" style="margin-left: 10px; background: #27ae60;">Landscape</a>
           <span class="description">- Standard invoice with items, tax, and totals</span>
         </li>
         <li>
-          <a href="/letter">Letter Template</a>
+          <a href="/letter">Letter (Portrait)</a>
+          <a href="/letter-landscape" style="margin-left: 10px; background: #27ae60;">Landscape</a>
           <span class="description">- Formal business letter format</span>
         </li>
         <li>
-          <a href="/report">Report Template</a>
+          <a href="/report">Report (Portrait)</a>
+          <a href="/report-landscape" style="margin-left: 10px; background: #27ae60;">Landscape</a>
           <span class="description">- Data report with tables and summary</span>
         </li>
         <li>
-          <a href="/sales-summary">Sales Summary Template</a>
+          <a href="/sales-summary">Sales Summary (Portrait)</a>
+          <a href="/sales-summary-landscape" style="margin-left: 10px; background: #27ae60;">Landscape</a>
           <span class="description">- Detailed sales summary report</span>
         </li>
         <li>
-          <a href="/billing-statement">Billing Statement Template</a>
+          <a href="/billing-statement">Billing Statement (Portrait)</a>
+          <a href="/billing-statement-landscape" style="margin-left: 10px; background: #27ae60;">Landscape</a>
           <span class="description">- Customer billing with itemized details</span>
         </li>
         <li>
-          <a href="/poison-order">Poison Order Template</a>
+          <a href="/poison-order">Poison Order (Portrait)</a>
+          <a href="/poison-order-landscape" style="margin-left: 10px; background: #27ae60;">Landscape</a>
           <span class="description">- Controlled substance delivery order</span>
         </li>
         <li>
-          <a href="/purchase-order">Purchase Order Template</a>
+          <a href="/purchase-order">Purchase Order (Portrait)</a>
+          <a href="/purchase-order-landscape" style="margin-left: 10px; background: #27ae60;">Landscape</a>
           <span class="description">- Supplier purchase order with GST</span>
         </li>
         <li>
-          <a href="/purchase-summary">Purchase Summary Template</a>
+          <a href="/purchase-summary">Purchase Summary (Portrait)</a>
+          <a href="/purchase-summary-landscape" style="margin-left: 10px; background: #27ae60;">Landscape</a>
           <span class="description">- Purchase summary by category/supplier</span>
         </li>
       </ul>
@@ -518,36 +628,79 @@ app.get('/', (req, res) => {
   `);
 });
 
-app.get('/invoice', (req, res) => {
-  res.render('invoice.html', mockInvoiceData);
+app.get('/invoice', async (req, res) => {
+  // Generate QR code as base64 data URI (simulates C++ production behavior)
+  const qrData = await generateQRBase64('INV-2026-0042-LHDN-EINVOICE-VALIDATION');
+  const data = { ...mockInvoiceData, e_invoice_qr: qrData };
+  res.render('invoice.html', data);
+});
+
+// Invoice in landscape mode
+app.get('/invoice-landscape', async (req, res) => {
+  const qrData = await generateQRBase64('INV-2026-0042-LHDN-EINVOICE-VALIDATION');
+  const data = { 
+    ...mockInvoiceData, 
+    e_invoice_qr: qrData,
+    orientation: 'landscape',
+    is_landscape: true
+  };
+  res.render('invoice.html', data);
 });
 
 app.get('/letter', (req, res) => {
   res.render('letter.html', mockLetterData);
 });
 
+app.get('/letter-landscape', (req, res) => {
+  res.render('letter.html', { ...mockLetterData, orientation: 'landscape', is_landscape: true });
+});
+
 app.get('/report', (req, res) => {
   res.render('report.html', mockReportData);
+});
+
+app.get('/report-landscape', (req, res) => {
+  res.render('report.html', { ...mockReportData, orientation: 'landscape', is_landscape: true });
 });
 
 app.get('/sales-summary', (req, res) => {
   res.render('sales_summary.html', mockSalesSummaryData);
 });
 
+app.get('/sales-summary-landscape', (req, res) => {
+  res.render('sales_summary.html', { ...mockSalesSummaryData, orientation: 'landscape', is_landscape: true });
+});
+
 app.get('/billing-statement', (req, res) => {
   res.render('billing_statement.html', mockBillingStatementData);
+});
+
+app.get('/billing-statement-landscape', (req, res) => {
+  res.render('billing_statement.html', { ...mockBillingStatementData, orientation: 'landscape', is_landscape: true });
 });
 
 app.get('/poison-order', (req, res) => {
   res.render('poison_order.html', mockPoisonOrderData);
 });
 
+app.get('/poison-order-landscape', (req, res) => {
+  res.render('poison_order.html', { ...mockPoisonOrderData, orientation: 'landscape', is_landscape: true });
+});
+
 app.get('/purchase-order', (req, res) => {
   res.render('purchase_order.html', mockPurchaseOrderData);
 });
 
+app.get('/purchase-order-landscape', (req, res) => {
+  res.render('purchase_order.html', { ...mockPurchaseOrderData, orientation: 'landscape', is_landscape: true });
+});
+
 app.get('/purchase-summary', (req, res) => {
   res.render('purchase_summary.html', mockPurchaseSummaryData);
+});
+
+app.get('/purchase-summary-landscape', (req, res) => {
+  res.render('purchase_summary.html', { ...mockPurchaseSummaryData, orientation: 'landscape', is_landscape: true });
 });
 
 // Start server

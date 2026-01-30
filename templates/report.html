@@ -3,8 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    body { font-family: Arial, sans-serif; font-size: 11pt; color: #333; padding: 20px; }
-    .letterhead { width: 100%; max-height: 80px; margin-bottom: 20px; }
+    @page {
+        size: {{orientation}};
+        margin: 0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+        {{#if is_landscape}}
+        width: 297mm;
+        height: 210mm;
+        {{else}}
+        width: 210mm;
+        height: 297mm;
+        {{/if}}
+        margin: 0;
+        padding: 0;
+    }
+    body { font-family: Arial, sans-serif; font-size: 11pt; color: #333; padding: 15mm; }
+    .page-content {
+        display: flex;
+        flex-direction: column;
+        {{#if is_landscape}}
+        min-height: calc(210mm - 30mm);
+        {{else}}
+        min-height: calc(297mm - 30mm);
+        {{/if}}
+    }
+    .report-body { flex: 1; }
+    .letterhead-img { width: 100%; max-height: 80px; margin-bottom: 20px; }
     h1 { font-size: 20pt; color: #2c3e50; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; margin-bottom: 20px; }
     h2 { font-size: 14pt; color: #34495e; margin-top: 25px; margin-bottom: 10px; }
     .meta { color: #666; margin-bottom: 20px; text-align: right; display: flex; justify-content: flex-end; gap: 20px; }
@@ -15,10 +41,11 @@
     .text-right { text-align: right; }
     tr:nth-child(even) { background: #f8f9fa; }
     .summary-row { font-weight: bold; background: #ecf0f1; }
-    .footer { margin-top: 30px; font-size: 10pt; color: #666; border-top: 1px solid #ddd; padding-top: 10px; }
+    .footer { margin-top: auto; font-size: 10pt; color: #666; border-top: 1px solid #ddd; padding-top: 10px; }
 </style>
 </head>
 <body>
+<div class="page-content">
     <img src="{{letterhead_image}}" class="letterhead" onerror="this.style.display='none'">
     
     <h1>{{report_title}}</h1>
@@ -57,5 +84,6 @@
     <div class="footer">
         <p>Report generated on {{date}}</p>
     </div>
+</div><!-- end page-content -->
 </body>
 </html>

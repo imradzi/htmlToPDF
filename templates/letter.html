@@ -3,18 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #333; padding: 40px; line-height: 1.6; }
-    .letterhead { width: 100%; max-height: 100px; margin-bottom: 30px; }
+    @page {
+        size: {{orientation}};
+        margin: 0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+        {{#if is_landscape}}
+        width: 297mm;
+        height: 210mm;
+        {{else}}
+        width: 210mm;
+        height: 297mm;
+        {{/if}}
+        margin: 0;
+        padding: 0;
+    }
+    body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #333; padding: 20mm; line-height: 1.6; }
+    .page-content {
+        display: flex;
+        flex-direction: column;
+        {{#if is_landscape}}
+        min-height: calc(210mm - 40mm);
+        {{else}}
+        min-height: calc(297mm - 40mm);
+        {{/if}}
+    }
+    .letter-body { flex: 1; }
+    .letterhead-img { width: 100%; max-height: 100px; margin-bottom: 30px; }
     .sender { margin-bottom: 30px; }
     .date { margin-bottom: 30px; }
     .recipient { margin-bottom: 30px; }
     .salutation { margin-bottom: 20px; }
     .body { margin-bottom: 30px; text-align: justify; }
-    .closing { margin-top: 30px; }
+    .closing { margin-top: auto; }
     .signature { margin-top: 50px; }
 </style>
 </head>
 <body>
+<div class="page-content">
     <img src="{{letterhead_image}}" class="letterhead" onerror="this.style.display='none'">
     
     <div class="sender">
@@ -39,5 +66,6 @@
         <strong>{{sender_name}}</strong><br>
         {{sender_title}}
     </div>
+</div><!-- end page-content -->
 </body>
 </html>

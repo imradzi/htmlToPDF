@@ -29,28 +29,35 @@ std::string TemplateEngine::processIfBlocks(const std::string& input,
                                              const std::map<std::string, std::string>& variables) {
     std::string result = input;
     
-    // Pattern: {{#if varName}}...{{/if}}
-    std::regex ifPattern(R"(\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{/if\}\})");
+    // Pattern: {{#if varName}}...{{/if}} - match innermost blocks only (no nested {{#if}} inside)
+    // This ensures we process from inside-out for nested conditionals
+    std::regex ifPattern(R"(\{\{#if\s+(\w+)\}\}((?:(?!\{\{#if\s)[\s\S])*?)\{\{/if\}\})");
     std::smatch match;
     
-    while (std::regex_search(result, match, ifPattern)) {
-        std::string varName = match[1].str();
-        std::string blockContent = match[2].str();
-        std::string replacement;
-        
-        auto it = variables.find(varName);
-        // Condition is true if variable exists and is not empty, "0", or "false"
-        bool conditionTrue = (it != variables.end() && 
-                              !it->second.empty() && 
-                              it->second != "0" && 
-                              it->second != "false");
-        
-        if (conditionTrue) {
-            replacement = blockContent;
+    // Keep processing until no more {{#if}} blocks remain
+    bool found = true;
+    while (found) {
+        found = false;
+        while (std::regex_search(result, match, ifPattern)) {
+            found = true;
+            std::string varName = match[1].str();
+            std::string blockContent = match[2].str();
+            std::string replacement;
+            
+            auto it = variables.find(varName);
+            // Condition is true if variable exists and is not empty, "0", or "false"
+            bool conditionTrue = (it != variables.end() && 
+                                  !it->second.empty() && 
+                                  it->second != "0" && 
+                                  it->second != "false");
+            
+            if (conditionTrue) {
+                replacement = blockContent;
+            }
+            
+            result = result.substr(0, match.position()) + replacement + 
+                     result.substr(match.position() + match.length());
         }
-        
-        result = result.substr(0, match.position()) + replacement + 
-                 result.substr(match.position() + match.length());
     }
     
     return result;
@@ -98,6 +105,9 @@ std::string TemplateEngine::processEachBlocks(const std::string& input,
         if (it != lists.end()) {
             for (const auto& item : it->second) {
                 std::string itemContent = blockContent;
+                // Process {{#if}} blocks within the item context first
+                itemContent = processIfBlocks(itemContent, item.fields);
+                // Then replace variables
                 for (const auto& [key, value] : item.fields) {
                     itemContent = replaceVariable(itemContent, key, value);
                 }

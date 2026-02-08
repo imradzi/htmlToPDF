@@ -94,10 +94,10 @@ PdfGenerateResult PdfGeneratorProxy::executeOnMainThread(const PdfGenerateReques
     LOG_INFO("PdfGeneratorProxy: Posting event to main thread");
     eventHandler_->QueueEvent(event.Clone());
 
+    std::unique_lock<std::mutex> lock(completionMutex);
 
     // Wait for completion
     LOG_INFO("PdfGeneratorProxy: Waiting for PDF generation to complete");
-    std::unique_lock<std::mutex> lock(completionMutex);
     completionCV.wait(lock, [&completed]() { return completed || global::g.isAppShuttingDown.load(std::memory_order_acquire); });
 
     if (completed) LOG_INFO("PdfGeneratorProxy: PDF generation completed");

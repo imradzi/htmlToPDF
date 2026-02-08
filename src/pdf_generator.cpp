@@ -5,7 +5,7 @@
 #include <cstring>
 #include "logging.hpp"
 #include <wx/app.h>
-
+#include "serialization.h"
 namespace htmlToPDF {
 
 // ============================================================================
@@ -17,11 +17,11 @@ wxDEFINE_EVENT(wpEVT_PDF_GENERATE, PdfGenerateEvent);
 // PdfGenerateEvent implementation
 // ============================================================================
 PdfGenerateEvent::PdfGenerateEvent(wxEventType eventType, int winid)
-    : wxEvent(winid, eventType) {
+    : wxThreadEvent(winid, eventType) {
 }
 
 PdfGenerateEvent::PdfGenerateEvent(const PdfGenerateEvent& other)
-    : wxEvent(other)
+    : wxThreadEvent(other)
     , request_(other.request_)
     , result_(other.result_)
     , completionCallback_(other.completionCallback_) {
@@ -80,55 +80,47 @@ bool PdfGeneratorProxy::generateToBuffer(const std::string& htmlContent, std::st
     return result.success;
 }
 
+using CallBackFunction = std::function<void(PdfGenerateResult&&)>;
+
 PdfGenerateResult PdfGeneratorProxy::executeOnMainThread(const PdfGenerateRequest& request) {
     PdfGenerateResult result;
     result.success = false;
-    
-    if (!eventHandler_) {
-        LOG_ERROR("PdfGeneratorProxy: No event handler set. Call SetEventHandler() first.");
-        result.errorMessage = "No event handler set";
-        return result;
-    }
-    
-    // Check if we're already on the main thread
-    if (wxThread::IsMain()) {
-        // Execute directly
-        PdfGenerateEvent evt;
-        evt.SetRequest(request);
-        OnPdfGenerateEvent(evt);
-        return evt.GetResult();
-    }
-    
+
+    LOG_INFO("PdfGeneratorProxy: executeOnMainThread called");
+   
     // We're on a worker thread - send event to main thread and wait
     std::mutex completionMutex;
     std::condition_variable completionCV;
     bool completed = false;
     
-    PdfGenerateEvent* evt = new PdfGenerateEvent();
-    evt->SetRequest(request);
-    
-    // Set up completion callback
-    evt->SetCompletionCallback([&completionMutex, &completionCV, &completed, &result, evt]() {
+    CallBackFunction completionCallBack = [&completionMutex, &completionCV, &completed, &result](PdfGenerateResult &&res) {
         std::lock_guard<std::mutex> lock(completionMutex);
-        result = evt->GetResult();
+        result = std::move(res);
         completed = true;
         completionCV.notify_one();
-    });
-    
+    };
+
+    wxCommandEvent event(wpEVT_PDF_GENERATE);
+    event.SetClientData(&completionCallBack);
+    event.SetString(GetSerializedBinary(request)); // Serialize request for transport if needed
     // Send event to main thread
-    wxQueueEvent(eventHandler_, evt);
-    
+    LOG_INFO("PdfGeneratorProxy: Posting event to main thread");
+    wxQueueEvent(eventHandler_, event.Clone());
     // Wait for completion
+    LOG_INFO("PdfGeneratorProxy: Waiting for PDF generation to complete");
     std::unique_lock<std::mutex> lock(completionMutex);
     completionCV.wait(lock, [&completed]() { return completed; });
-    
+    LOG_INFO("PdfGeneratorProxy: PDF generation completed");
     return result;
 }
 
-void PdfGeneratorProxy::OnPdfGenerateEvent(PdfGenerateEvent& event) {
-    LOG_INFO("PdfGeneratorProxy: OnPdfGenerateEvent called on main thread");
-    PdfGenerateResult result;
-    const auto& request = event.GetRequest();
+void PdfGeneratorProxy::OnEvent(wxCommandEvent& event) {
+    LOG_INFO("PdfGeneratorProxy: OnEvent called on main thread");
+    PdfGenerateRequest request;
+    if (!LoadSerialized(request, event.GetString())) {
+        LOG_ERROR("PdfGeneratorProxy: Failed to deserialize PdfGenerateRequest");
+        return;
+    }   
     
     try {
         switch (request.type) {
@@ -165,9 +157,8 @@ void PdfGeneratorProxy::OnPdfGenerateEvent(PdfGenerateEvent& event) {
         result.errorMessage = e.what();
         LOG_ERROR("PdfGeneratorProxy: Exception during PDF generation: {}", e.what());
     }
-    
-    event.SetResult(result);
-    event.SignalCompletion();
+    auto completionCallBack = static_cast<CallBackFunction *>(event.GetClientData());
+    if (completionCallBack) (*completionCallBack)(std::move(result));
 }
 
 // ============================================================================

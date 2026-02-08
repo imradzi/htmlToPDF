@@ -7,6 +7,18 @@
 #include <functional>
 #include <wx/event.h>
 #include <wx/thread.h>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/serialization/array.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/serialization/unordered_map.hpp>
+#include <boost/serialization/unordered_set.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/vector.hpp>
 
 namespace htmlToPDF {
 
@@ -17,6 +29,16 @@ struct PdfConfig {
     std::string marginLeft = "15mm";
     std::string marginRight = "15mm";
     bool enableLocalFileAccess = true;  // needed for local images
+
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & pageSize;
+        ar & marginTop;
+        ar & marginBottom;
+        ar & marginLeft;
+        ar & marginRight;
+        ar & enableLocalFileAccess;
+    }
 };
 
 // Thread-safe PDF generator (serializes all conversions via mutex)
@@ -30,6 +52,15 @@ public:
         int marginBottom = 10;
         int marginLeft = 10;
         int marginRight = 10;
+        template<class Archive>
+        void serialize(Archive& ar, const unsigned int version) {
+            ar & pageSize;
+            ar & orientation;
+            ar & marginTop;
+            ar & marginBottom;
+            ar & marginLeft;
+            ar & marginRight;
+        }
     };
 
     PdfGenerator();
@@ -90,6 +121,15 @@ struct PdfGenerateRequest {
     std::string outputPath;
     PdfGenerator::PdfSettings settings;
     std::string* outputBuffer = nullptr;  // for generateToBuffer
+
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+        ar & type;
+        ar & htmlContent;
+        ar & htmlPages;
+        ar & outputPath;
+        ar & settings;
+    }
 };
 
 // Result data structure
@@ -99,7 +139,7 @@ struct PdfGenerateResult {
 };
 
 // Custom event class for PDF generation
-class PdfGenerateEvent : public wxEvent {
+class PdfGenerateEvent : public wxThreadEvent {
 public:
     PdfGenerateEvent(wxEventType eventType = wpEVT_PDF_GENERATE, int winid = 0);
     PdfGenerateEvent(const PdfGenerateEvent& other);
@@ -142,10 +182,8 @@ public:
     static void SetEventHandler(wxEvtHandler* handler);
     
     // Thread-safe methods that dispatch to main thread and wait for completion
-    bool generateFromHtml(const std::string& htmlContent, const std::string& outputPath, 
-                          const PdfGenerator::PdfSettings& settings);
-    bool generateMultiPagePdf(const std::vector<std::string>& htmlPages, const std::string& outputPath, 
-                              const PdfGenerator::PdfSettings& settings);
+    bool generateFromHtml(const std::string& htmlContent, const std::string& outputPath, const PdfGenerator::PdfSettings& settings);
+    bool generateMultiPagePdf(const std::vector<std::string>& htmlPages, const std::string& outputPath, const PdfGenerator::PdfSettings& settings);
     bool generateToBuffer(const std::string& htmlContent, std::string& outputBuffer);
     
     // Handler to be called on main thread (register this with your event handler)

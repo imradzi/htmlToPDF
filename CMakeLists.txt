@@ -105,6 +105,8 @@ target_include_directories(htmlToPDF PUBLIC
     ${WKHTMLTOX_INCLUDE_DIR}
     ${wxWidgets_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/../wpObject
+    ${CMAKE_CURRENT_SOURCE_DIR}/../net
+    ${CMAKE_CURRENT_SOURCE_DIR}/../util
 )
 
 # Ensure template generation happens before compiling

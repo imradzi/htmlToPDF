@@ -101,8 +101,7 @@ PdfGenerateResult PdfGeneratorProxy::executeOnMainThread(const PdfGenerateReques
     };
 
     wxCommandEvent event(wpEVT_PDF_GENERATE);
-    event.SetClientData(&completionCallBack);
-    event.SetString(GetSerializedBinary(request)); // Serialize request for transport if needed
+    event.SetClientData(std::pair<const PdfGenerateRequest *, CallBackFunction*>(&request, &completionCallBack));
     // Send event to main thread
     LOG_INFO("PdfGeneratorProxy: Posting event to main thread");
     wxQueueEvent(eventHandler_, event.Clone());
@@ -116,12 +115,17 @@ PdfGenerateResult PdfGeneratorProxy::executeOnMainThread(const PdfGenerateReques
 
 void PdfGeneratorProxy::OnEvent(wxCommandEvent& event) {
     LOG_INFO("PdfGeneratorProxy: OnEvent called on main thread");
-    PdfGenerateRequest request;
-    if (!LoadSerialized(request, event.GetString())) {
-        LOG_ERROR("PdfGeneratorProxy: Failed to deserialize PdfGenerateRequest");
+    auto p = static_cast<std::pair<PdfGenerateRequest*, CallBackFunction*>>(event.GetClientData());
+    if (p == nullptr) {
+        LOG_ERROR("PdfGeneratorProxy: Invalid event client data");
         return;
-    }   
-    
+    }
+    if (p->first == nullptr) {
+        LOG_ERROR("PdfGeneratorProxy: PdfGenerateRequest pointer is null");
+        return;
+    }
+    PdfGenerateRequest& request = *p.first;
+
     try {
         switch (request.type) {
             case PdfGenerateRequest::RequestType::GenerateFromHtml:
@@ -157,7 +161,7 @@ void PdfGeneratorProxy::OnEvent(wxCommandEvent& event) {
         result.errorMessage = e.what();
         LOG_ERROR("PdfGeneratorProxy: Exception during PDF generation: {}", e.what());
     }
-    auto completionCallBack = static_cast<CallBackFunction *>(event.GetClientData());
+    auto completionCallBack = p->second;
     if (completionCallBack) (*completionCallBack)(std::move(result));
 }
 

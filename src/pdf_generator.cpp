@@ -4,7 +4,175 @@
 #include <sstream>
 #include <cstring>
 #include "logging.hpp"
+#include <wx/app.h>
+
 namespace htmlToPDF {
+
+// ============================================================================
+// Define the custom event type
+// ============================================================================
+wxDEFINE_EVENT(wpEVT_PDF_GENERATE, PdfGenerateEvent);
+
+// ============================================================================
+// PdfGenerateEvent implementation
+// ============================================================================
+PdfGenerateEvent::PdfGenerateEvent(wxEventType eventType, int winid)
+    : wxEvent(winid, eventType) {
+}
+
+PdfGenerateEvent::PdfGenerateEvent(const PdfGenerateEvent& other)
+    : wxEvent(other)
+    , request_(other.request_)
+    , result_(other.result_)
+    , completionCallback_(other.completionCallback_) {
+}
+
+// ============================================================================
+// PdfGeneratorProxy static members
+// ============================================================================
+wxEvtHandler* PdfGeneratorProxy::eventHandler_ = nullptr;
+PdfGenerator PdfGeneratorProxy::generator_;
+
+// ============================================================================
+// PdfGeneratorProxy implementation
+// ============================================================================
+PdfGeneratorProxy::PdfGeneratorProxy() : config_() {
+}
+
+PdfGeneratorProxy::PdfGeneratorProxy(const PdfConfig& config) : config_(config) {
+}
+
+void PdfGeneratorProxy::SetEventHandler(wxEvtHandler* handler) {
+    eventHandler_ = handler;
+}
+
+bool PdfGeneratorProxy::generateFromHtml(const std::string& htmlContent, const std::string& outputPath,
+                                          const PdfGenerator::PdfSettings& settings) {
+    PdfGenerateRequest request;
+    request.type = PdfGenerateRequest::RequestType::GenerateFromHtml;
+    request.htmlContent = htmlContent;
+    request.outputPath = outputPath;
+    request.settings = settings;
+    
+    auto result = executeOnMainThread(request);
+    return result.success;
+}
+
+bool PdfGeneratorProxy::generateMultiPagePdf(const std::vector<std::string>& htmlPages, const std::string& outputPath,
+                                              const PdfGenerator::PdfSettings& settings) {
+    PdfGenerateRequest request;
+    request.type = PdfGenerateRequest::RequestType::GenerateMultiPage;
+    request.htmlPages = htmlPages;
+    request.outputPath = outputPath;
+    request.settings = settings;
+    
+    auto result = executeOnMainThread(request);
+    return result.success;
+}
+
+bool PdfGeneratorProxy::generateToBuffer(const std::string& htmlContent, std::string& outputBuffer) {
+    PdfGenerateRequest request;
+    request.type = PdfGenerateRequest::RequestType::GenerateToBuffer;
+    request.htmlContent = htmlContent;
+    request.outputBuffer = &outputBuffer;
+    
+    auto result = executeOnMainThread(request);
+    return result.success;
+}
+
+PdfGenerateResult PdfGeneratorProxy::executeOnMainThread(const PdfGenerateRequest& request) {
+    PdfGenerateResult result;
+    result.success = false;
+    
+    if (!eventHandler_) {
+        LOG_ERROR("PdfGeneratorProxy: No event handler set. Call SetEventHandler() first.");
+        result.errorMessage = "No event handler set";
+        return result;
+    }
+    
+    // Check if we're already on the main thread
+    if (wxThread::IsMain()) {
+        // Execute directly
+        PdfGenerateEvent evt;
+        evt.SetRequest(request);
+        OnPdfGenerateEvent(evt);
+        return evt.GetResult();
+    }
+    
+    // We're on a worker thread - send event to main thread and wait
+    std::mutex completionMutex;
+    std::condition_variable completionCV;
+    bool completed = false;
+    
+    PdfGenerateEvent* evt = new PdfGenerateEvent();
+    evt->SetRequest(request);
+    
+    // Set up completion callback
+    evt->SetCompletionCallback([&completionMutex, &completionCV, &completed, &result, evt]() {
+        std::lock_guard<std::mutex> lock(completionMutex);
+        result = evt->GetResult();
+        completed = true;
+        completionCV.notify_one();
+    });
+    
+    // Send event to main thread
+    wxQueueEvent(eventHandler_, evt);
+    
+    // Wait for completion
+    std::unique_lock<std::mutex> lock(completionMutex);
+    completionCV.wait(lock, [&completed]() { return completed; });
+    
+    return result;
+}
+
+void PdfGeneratorProxy::OnPdfGenerateEvent(PdfGenerateEvent& event) {
+    LOG_INFO("PdfGeneratorProxy: OnPdfGenerateEvent called on main thread");
+    PdfGenerateResult result;
+    const auto& request = event.GetRequest();
+    
+    try {
+        switch (request.type) {
+            case PdfGenerateRequest::RequestType::GenerateFromHtml:
+            LOG_INFO("PdfGeneratorProxy: Generating PDF from HTML");
+                result.success = generator_.generateFromHtml(
+                    request.htmlContent, 
+                    request.outputPath, 
+                    request.settings);
+                break;
+                
+            case PdfGenerateRequest::RequestType::GenerateMultiPage:
+                LOG_INFO("PdfGeneratorProxy: Generating PDF from multiple HTML pages");
+                result.success = generator_.generateMultiPagePdf(
+                    request.htmlPages,
+                    request.outputPath,
+                    request.settings);
+                break;
+                
+            case PdfGenerateRequest::RequestType::GenerateToBuffer:
+                LOG_INFO("PdfGeneratorProxy: Generating PDF to memory buffer");
+                if (request.outputBuffer) {
+                    result.success = generator_.generateToBuffer(
+                        request.htmlContent, 
+                        *const_cast<std::string*>(request.outputBuffer));
+                } else {
+                    result.success = false;
+                    result.errorMessage = "Output buffer is null";
+                }
+                break;
+        }
+    } catch (const std::exception& e) {
+        result.success = false;
+        result.errorMessage = e.what();
+        LOG_ERROR("PdfGeneratorProxy: Exception during PDF generation: {}", e.what());
+    }
+    
+    event.SetResult(result);
+    event.SignalCompletion();
+}
+
+// ============================================================================
+// Original PdfGenerator implementation
+// ============================================================================
 
 // Callback functions for wkhtmltopdf error/warning reporting
 static void pdfErrorCallback(wkhtmltopdf_converter* /*converter*/, const char* msg) {
@@ -23,33 +191,27 @@ bool PdfGenerator::initialized_ = false;
 std::mutex PdfGenerator::mutex_;
 
 PdfGenerator::PdfGenerator() : config_() {
-    if (!initialized_) {
-        initLibrary();
-    }
 }
 
 PdfGenerator::PdfGenerator(const PdfConfig& config) : config_(config) {
-    if (!initialized_) {
-        initLibrary();
-    }
 }
 
 PdfGenerator::~PdfGenerator() {
-    // Don't deinit here - let the app control library lifecycle
 }
 
+// Call this ONCE from main() before creating any threads
 bool PdfGenerator::initLibrary() {
     if (initialized_) return true;
-    
-    // Initialize with graphics support disabled (headless mode)
     if (wkhtmltopdf_init(0) != 1) {
         LOG_ERROR("Failed to initialize wkhtmltopdf library");
         return false;
     }
     initialized_ = true;
+    LOG_INFO("wkhtmltopdf library initialized");
     return true;
 }
 
+// Call this at application shutdown (optional)
 void PdfGenerator::deinitLibrary() {
     if (initialized_) {
         wkhtmltopdf_deinit();
@@ -68,22 +230,19 @@ bool PdfGenerator::generateFromHtml(const std::string& htmlContent, const std::s
 bool PdfGenerator::generateMultiPagePdf(const std::vector<std::string>& htmlPages, const std::string& outputPath, const PdfSettings& settings) {
     if (htmlPages.empty()) return false;
     
-    // Serialize all PDF generation
-    LOG_INFO("Starting multi-page PDF generation: {}", outputPath);
     std::lock_guard<std::mutex> lock(mutex_);
-    LOG_INFO("Acquired lock for multi-page PDF generation");
     
     if (!initialized_) {
-        LOG_ERROR("Library not initialized");
+        LOG_ERROR("wkhtmltopdf not initialized - call initLibrary() from main thread at startup");
         return false;
     }
     
-    // Create global settings
     wkhtmltopdf_global_settings* gs = wkhtmltopdf_create_global_settings();
     if (!gs) {
         LOG_ERROR("Failed to create global settings");
         return false;
     }
+    
     wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
     wkhtmltopdf_set_global_setting(gs, "size.pageSize", settings.pageSize.c_str());
     wkhtmltopdf_set_global_setting(gs, "orientation", settings.orientation.c_str());
@@ -98,47 +257,35 @@ bool PdfGenerator::generateMultiPagePdf(const std::vector<std::string>& htmlPage
     wkhtmltopdf_set_global_setting(gs, "margin.left", marginLeft.c_str());
     wkhtmltopdf_set_global_setting(gs, "margin.right", marginRight.c_str());
     
-    // Create converter
     wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);
     if (!converter) {
         LOG_ERROR("Failed to create PDF converter");
-        wkhtmltopdf_destroy_global_settings(gs);
         return false;
     }
     
-    // Register error/warning callbacks
     wkhtmltopdf_set_error_callback(converter, pdfErrorCallback);
     wkhtmltopdf_set_warning_callback(converter, pdfWarningCallback);
     
-    // Add each HTML page as a separate object
     for (const auto& html : htmlPages) {
         wkhtmltopdf_object_settings* os = wkhtmltopdf_create_object_settings();
         wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
         wkhtmltopdf_add_object(converter, os, html.c_str());
     }
     
-    // Perform conversion
     bool success = (wkhtmltopdf_convert(converter) == 1);
     
     if (!success) {
-        int httpError = wkhtmltopdf_http_error_code(converter);
-        if (httpError != 0) {
-            LOG_ERROR("Multi-page PDF conversion failed with HTTP error: {}", httpError);
-        } else {
-            LOG_ERROR("Multi-page PDF conversion failed");
-        }
+        LOG_ERROR("Multi-page PDF conversion failed");
     } else {
         LOG_INFO("Multi-page PDF generated: {}", outputPath);
     }
     
-    // Cleanup
     wkhtmltopdf_destroy_converter(converter);
     
     return success;
 }
 
 bool PdfGenerator::generateFromFile(const std::string& htmlPath, const std::string& outputPath) {
-    // Read file content
     std::ifstream file(htmlPath);
     if (!file) {
         LOG_ERROR("Failed to open file: {}", htmlPath);
@@ -155,66 +302,52 @@ bool PdfGenerator::generateToBuffer(const std::string& htmlContent, std::string&
 
 bool PdfGenerator::doConvert(const std::string& htmlContent, const std::string& outputPath,
                               std::string* outputBuffer) {
-    // Serialize all PDF generation - wkhtmltopdf library is not thread-safe
     std::lock_guard<std::mutex> lock(mutex_);
     
     if (!initialized_) {
-        LOG_ERROR("Library not initialized");
+        LOG_ERROR("wkhtmltopdf not initialized - call initLibrary() from main thread at startup");
         return false;
     }
     
-    // Create global settings
     wkhtmltopdf_global_settings* gs = wkhtmltopdf_create_global_settings();
     if (!gs) {
         LOG_ERROR("Failed to create global settings");
         return false;
     }
     
-    // Set output file (empty string = output to memory)
     if (!outputPath.empty()) {
         wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
     }
     
-    // Page settings
     wkhtmltopdf_set_global_setting(gs, "size.pageSize", config_.pageSize.c_str());
     wkhtmltopdf_set_global_setting(gs, "margin.top", config_.marginTop.c_str());
     wkhtmltopdf_set_global_setting(gs, "margin.bottom", config_.marginBottom.c_str());
     wkhtmltopdf_set_global_setting(gs, "margin.left", config_.marginLeft.c_str());
     wkhtmltopdf_set_global_setting(gs, "margin.right", config_.marginRight.c_str());
     
-    // Create object settings for HTML content
     wkhtmltopdf_object_settings* os = wkhtmltopdf_create_object_settings();
     if (!os) {
         LOG_ERROR("Failed to create object settings");
-        wkhtmltopdf_destroy_global_settings(gs);
         return false;
     }
     
-    // Enable local file access for images
     if (config_.enableLocalFileAccess) {
         wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
     }
     
-    // Create converter
     wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);
     if (!converter) {
         LOG_ERROR("Failed to create PDF converter");
-        wkhtmltopdf_destroy_object_settings(os);
-        wkhtmltopdf_destroy_global_settings(gs);
         return false;
     }
     
-    // Register error/warning callbacks
     wkhtmltopdf_set_error_callback(converter, pdfErrorCallback);
     wkhtmltopdf_set_warning_callback(converter, pdfWarningCallback);
     
-    // Add the HTML content as an object
     wkhtmltopdf_add_object(converter, os, htmlContent.c_str());
     
-    // Perform conversion
     bool success = (wkhtmltopdf_convert(converter) == 1);
     
-    // If outputting to buffer, get the data
     if (success && outputBuffer != nullptr) {
         const unsigned char* data = nullptr;
         long len = wkhtmltopdf_get_output(converter, &data);
@@ -224,17 +357,11 @@ bool PdfGenerator::doConvert(const std::string& htmlContent, const std::string& 
     }
     
     if (!success) {
-        int httpError = wkhtmltopdf_http_error_code(converter);
-        if (httpError != 0) {
-            LOG_ERROR("PDF conversion failed with HTTP error: {}", httpError);
-        } else {
-            LOG_ERROR("PDF conversion failed");
-        }
+        LOG_ERROR("PDF conversion failed");
     } else if (!outputPath.empty()) {
         LOG_INFO("PDF generated: {}", outputPath);
     }
     
-    // Cleanup
     wkhtmltopdf_destroy_converter(converter);
     
     return success;
@@ -242,22 +369,19 @@ bool PdfGenerator::doConvert(const std::string& htmlContent, const std::string& 
 
 bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const std::string& outputPath,
                                           const PdfSettings& settings) {
-    // Serialize all PDF generation
-    LOG_INFO("Starting PDF conversion: waiting for mutex lock");
     std::lock_guard<std::mutex> lock(mutex_);
-    LOG_INFO("Acquired mutex lock for PDF conversion");
-
+    
     if (!initialized_) {
-        LOG_ERROR("Library not initialized");
+        LOG_ERROR("wkhtmltopdf not initialized - call initLibrary() from main thread at startup");
         return false;
     }
     
-    // Create global settings
     wkhtmltopdf_global_settings* gs = wkhtmltopdf_create_global_settings();
     if (!gs) {
         LOG_ERROR("Failed to create global settings");
         return false;
     }
+    
     wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
     wkhtmltopdf_set_global_setting(gs, "size.pageSize", settings.pageSize.c_str());
     wkhtmltopdf_set_global_setting(gs, "orientation", settings.orientation.c_str());
@@ -272,51 +396,34 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
     wkhtmltopdf_set_global_setting(gs, "margin.left", marginLeft.c_str());
     wkhtmltopdf_set_global_setting(gs, "margin.right", marginRight.c_str());
     
-    LOG_INFO("Global settings configured for PDF conversion");
-
-    // Create object settings
     wkhtmltopdf_object_settings* os = wkhtmltopdf_create_object_settings();
     if (!os) {
         LOG_ERROR("Failed to create object settings");
-        wkhtmltopdf_destroy_global_settings(gs);
         return false;
     }
     wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
-    LOG_INFO("Object settings configured for PDF conversion");
-
-    // Create converter
+    
     wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);
     if (!converter) {
         LOG_ERROR("Failed to create PDF converter");
-        wkhtmltopdf_destroy_object_settings(os);
-        wkhtmltopdf_destroy_global_settings(gs);
         return false;
     }
-    LOG_INFO("PDF converter created");
-
-    // Register error/warning callbacks
+    
     wkhtmltopdf_set_error_callback(converter, pdfErrorCallback);
     wkhtmltopdf_set_warning_callback(converter, pdfWarningCallback);
     
     wkhtmltopdf_add_object(converter, os, htmlContent.c_str());
     
-    // Perform conversion
-    bool success = (wkhtmltopdf_convert     (converter) == 1);
+    bool success = (wkhtmltopdf_convert(converter) == 1);
     
     if (!success) {
-        int httpError = wkhtmltopdf_http_error_code(converter);
-        if (httpError != 0) {
-            LOG_ERROR("PDF conversion failed with HTTP error: {}", httpError);
-        } else {
-            LOG_ERROR("PDF conversion failed");
-        }
+        LOG_ERROR("PDF conversion failed");
     } else {
         LOG_INFO("PDF generated: {}", outputPath);
     }
-
-    // Cleanup; this will also clean up global and object settings - since the converter owns them
+    
     wkhtmltopdf_destroy_converter(converter);
-
+    
     return success;
 }
 

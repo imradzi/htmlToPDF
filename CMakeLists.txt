@@ -103,6 +103,7 @@ target_include_directories(htmlToPDF PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}/generated
     ${WKHTMLTOX_INCLUDE_DIR}
+    ${wxWidgets_INCLUDE_DIRS}
 )
 
 # Ensure template generation happens before compiling
@@ -112,11 +113,13 @@ add_dependencies(htmlToPDF generate_templates)
 if(TARGET logger)
     target_link_libraries(htmlToPDF PUBLIC
         ${WKHTMLTOX_LIBRARY}
+        ${wxWidgets_LIBRARIES}
         logger
     )
 else()
     target_link_libraries(htmlToPDF PUBLIC
         ${WKHTMLTOX_LIBRARY}
+        ${wxWidgets_LIBRARIES}
     )
 endif()
 

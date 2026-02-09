@@ -12,14 +12,12 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     html, body {
-        width: 210mm;
-        min-height: 297mm;
+        width: 100%;
     }
     
     {{#if is_landscape}}
     html, body {
-        width: 297mm;
-        min-height: 210mm;
+        width: 100%;
     }
     {{/if}}
     
@@ -27,16 +25,11 @@
         font-family: Arial, sans-serif; 
         font-size: 9pt; 
         color: #333; 
-        padding: 15mm;
+        padding: 0;
         line-height: 1.3;
-        display: flex;
-        flex-direction: column;
     }
     
     .page-content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
     }
     
     .letterhead {

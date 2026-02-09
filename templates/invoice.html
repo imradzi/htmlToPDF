@@ -41,15 +41,22 @@
     }
     
     .letterhead {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+        width: 100%;
         margin-bottom: 8mm;
+        border-collapse: separate;
+        border-spacing: 3mm;
+    }
+    .letterhead-left {
+        width: 70%;
         padding: 3mm;
         background: {{letterhead_fill_color}};
         border: 1px solid {{box_color}};
+        vertical-align: top;
     }
-    .letterhead-left { flex: 1; }
+    .letterhead-right {
+        width: 30%;
+        vertical-align: top;
+    }
     .outlet-name { font-size: 14pt; font-weight: bold; }
     .outlet-name2 { font-size: 11pt; }
     .outlet-address { font-size: 9pt; margin-top: 2mm; white-space: pre-line; }
@@ -59,17 +66,18 @@
     .qr-code img { width: 20mm; height: 20mm; }
     
     .header-section {
-        display: flex;
-        justify-content: space-between;
+        width: 100%;
         margin-bottom: 5mm;
-        gap: 5mm;
+        border-collapse: separate;
+        border-spacing: 3mm;
     }
     
     .party-box {
-        flex: 1;
+        width: 50%;
         padding: 3mm;
         border: 1px solid {{box_color}};
         background: #fafafa;
+        vertical-align: top;
     }
     .party-label { font-size: 8pt; color: #666; margin-bottom: 1mm; }
     .party-name { font-weight: bold; }
@@ -84,8 +92,13 @@
         min-width: 50mm;
     }
     .doc-type { font-size: 14pt; font-weight: bold; color: #333; }
-    .doc-details { font-size: 9pt; margin-top: 2mm; }
+    .doc-info-content { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+    .doc-info-content td { border: none; padding: 0; vertical-align: top; }
+    .doc-details { font-size: 9pt; text-align: right; }
     .doc-details div { margin: 1mm 0; }
+    
+    .qr-code { padding-left: 3mm; vertical-align: middle; }
+    .qr-code img { width: 20mm; height: 20mm; }
     
     .items-section { 
         flex: 1;
@@ -98,6 +111,40 @@
     .items-table-wrapper {
         flex: 1;
     }
+    
+    .items-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        font-size: 8pt; 
+    }
+    
+    .items-table th {
+        background: #3c4248;
+        color: white;
+        padding: 2mm 1.5mm;
+        text-align: left;
+        border: 1px solid #555;
+        white-space: nowrap;
+    }
+    .items-table th.amt { text-align: right; }
+    .items-table th.ctr { text-align: center; }
+    /* Name column expands to fill remaining space */
+    .items-table th.col-name { width: 100%; }
+    
+    .items-table td {
+        padding: 1.5mm 1.5mm;
+        border: 1px solid #ddd;
+        vertical-align: top;
+        white-space: nowrap;
+    }
+    .items-table td.amt { text-align: right; }
+    .items-table td.ctr { text-align: center; }
+    .items-table td.wrap { white-space: normal; word-wrap: break-word; }
+    
+    .items-table tr:nth-child(even) { background: #f9f9f9; }
+    
+    .items-table .total-row { font-weight: bold; background: #f0f0f0 !important; }
+    .items-table .total-row td { border-top: 2px solid #333; }
     
     table { width: 100%; border-collapse: collapse; font-size: 8pt; }
     
@@ -169,61 +216,68 @@
 </head>
 <body>
 <div class="page-content">
-    <div class="letterhead">
-        <div class="letterhead-left">
-            <div class="outlet-name">{{outlet_name}}</div>
-            {{#if outlet_name2}}<div class="outlet-name2">{{outlet_name2}}</div>{{/if}}
-            <div class="outlet-address">{{outlet_address}}</div>
-            {{#if outlet_reg_no}}<div class="outlet-reg">Reg No: {{outlet_reg_no}}</div>{{/if}}
-            {{#if outlet_gst_reg_no}}<div class="outlet-reg">GST No: {{outlet_gst_reg_no}}</div>{{/if}}
-        </div>
-        <div class="doc-info-box">
-            <div class="doc-type">{{#if is_draft}}DRAFT {{/if}}{{document_type}}</div>
-            <div class="doc-details">
-                <div>{{transaction_date}}</div>
-                <div>{{ref_title}} {{ref_no}}</div>
-                {{#if is_purchase_order}}<div>Our Ref: {{id}}</div>{{/if}}
-                <div>Page: {{page_no}} of {{total_pages}}</div>
-                <div>Term: {{term}}</div>
-            </div>
-            {{#if has_e_invoice}}
-            <div class="qr-code">
-                <img src="{{{e_invoice_qr}}}" alt="e-Invoice QR" />
-            </div>
-        {{/if}}
+    <table class="letterhead">
+        <tr>
+            <td class="letterhead-left">
+                <div class="outlet-name">{{outlet_name}}</div>
+                {{#if outlet_name2}}<div class="outlet-name2">{{outlet_name2}}</div>{{/if}}
+                <div class="outlet-address">{{outlet_address}}</div>
+                {{#if outlet_reg_no}}<div class="outlet-reg">Reg No: {{outlet_reg_no}}</div>{{/if}}
+                {{#if outlet_gst_reg_no}}<div class="outlet-reg">GST No: {{outlet_gst_reg_no}}</div>{{/if}}
+            </td>
+            <td class="letterhead-right">
+                <div class="doc-info-box">
+                    <div class="doc-type">{{#if is_draft}}DRAFT {{/if}}{{document_type}}</div>
+                    <table class="doc-info-content">
+                        <tr>
+                            <td class="doc-details">
+                                <div>{{transaction_date}}</div>
+                                <div>{{ref_title}} {{ref_no}}</div>
+                                {{#if is_purchase_order}}<div>Our Ref: {{id}}</div>{{/if}}
+                                <div>Page: {{page_no}} of {{total_pages}}</div>
+                                <div>Term: {{term}}</div>
+                            </td>
+                            {{#if has_e_invoice}}
+                            <td class="qr-code">
+                                <img src="{{{e_invoice_qr}}}" alt="e-Invoice QR" />
+                            </td>
+                            {{/if}}
+                        </tr>
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
 
-        </div>
-
-    </div>
-
-    <div class="header-section">
-        <div class="party-box">
-            <div class="party-label">{{party_label}}</div>
-            <div class="party-name">{{invoice_to_name}}</div>
-            <div class="party-address">{{invoice_to_address}}</div>
-            {{#if show_account_id}}<div class="party-id">Account No: {{invoice_to_id}}</div>{{/if}}
-        </div>
-        {{#if show_deliver_to}}
-        <div class="party-box" style="width: 45%; margin-bottom: 10px;">
-            <div class="party-label">Deliver To:</div>
-            <div class="party-name">{{deliver_to_name}}</div>
-            <div class="party-address">{{deliver_to_address}}</div>
-        </div>
-        {{/if}}
-        
-    </div>
+    <table class="header-section">
+        <tr>
+            <td class="party-box">
+                <div class="party-label">{{party_label}}</div>
+                <div class="party-name">{{invoice_to_name}}</div>
+                <div class="party-address">{{invoice_to_address}}</div>
+                {{#if show_account_id}}<div class="party-id">Account No: {{invoice_to_id}}</div>{{/if}}
+            </td>
+            {{#if show_deliver_to}}
+            <td class="party-box">
+                <div class="party-label">Deliver To:</div>
+                <div class="party-name">{{deliver_to_name}}</div>
+                <div class="party-address">{{deliver_to_address}}</div>
+            </td>
+            {{/if}}
+        </tr>
+    </table>
     
 
     <div class="items-section">
         <div class="items-label">{{items_label}}</div>
         
-        <table>
+        <table class="items-table">
             <thead>
                 <tr>
-                    <th style="width: 25px;" class="ctr">#</th>
+                    <th class="ctr">#</th>
                     {{#if show_code}}<th>CODE</th>{{/if}}
                     {{#if show_mal}}<th>MAL</th>{{/if}}
-                    <th>NAME</th>
+                    <th class="col-name">NAME</th>
                     <th>PACK</th>
                     {{#if show_batch_expiry}}<th>BATCH</th><th>EXPIRY</th>{{/if}}
                     <th class="amt">QTY</th>
@@ -243,7 +297,7 @@
                     <td class="ctr">{{line_no}}</td>
                     {{#if show_code}}<td>{{code}}</td>{{/if}}
                     {{#if show_mal}}<td>{{mal}}</td>{{/if}}
-                    <td>{{name}}</td>
+                    <td class="wrap">{{name}}</td>
                     <td>{{packing}}</td>
                     {{#if show_batch_expiry}}<td>{{batch_no}}</td><td>{{expiry_date}}</td>{{/if}}
                     <td class="amt">{{quantity}}</td>

@@ -3,427 +3,410 @@
 <head>
 <meta charset="UTF-8">
 <style>
+    /* A4 Page Setup */
     @page {
-        size: {{orientation}};
+        size: A4 {{orientation}};
         margin: 0;
     }
+    
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     html, body {
-        {{#if is_landscape}}
-        width: 297mm;
-        height: 210mm;
-        {{else}}
-        width: 210mm;
-        height: 297mm;
-        {{/if}}
-        margin: 0;
-        padding: 0;
+        width: 100%;
     }
+    
     body { 
         font-family: Arial, sans-serif; 
-        font-size: 10pt; 
+        font-size: 9pt; 
         color: #333; 
-        padding: 15mm;
-        line-height: 1.4;
+        padding: 0;
+        line-height: 1.3;
     }
+    
     .page-content {
-        display: flex;
-        flex-direction: column;
-        {{#if is_landscape}}
-        min-height: calc(210mm - 30mm);
-        {{else}}
-        min-height: calc(297mm - 30mm);
-        {{/if}}
-    }
-    .content-sections {
-        flex: 1;
-    }
-    .footer {
-        margin-top: auto;
     }
     
-    .header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 10px;
+    .letterhead {
+        width: 100%;
+        margin-bottom: 5mm;
+        border-collapse: collapse;
     }
-    .title { font-size: 12pt; font-weight: bold; }
-    .meta { text-align: right; font-size: 9pt; }
-    
-    .outlet-info {
-        margin: 15px 0;
-        padding: 10px;
-        background: {{letterhead_fill_color}};
-        border: 1px solid {{box_color}};
+    .letterhead-left {
+        width: 50%;
+        padding: 3mm;
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        vertical-align: top;
     }
-    .outlet-name { font-weight: bold; }
-    
-    .date-range {
-        display: flex;
-        justify-content: space-between;
-        margin: 10px 0;
-        
+    .letterhead-middle {
+        width: 25%;
+        padding: 3mm;
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-left: none;
+        vertical-align: top;
     }
+    .letterhead-right {
+        width: 25%;
+        padding: 3mm;
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-left: none;
+        vertical-align: top;
+    }
+    .outlet-name { font-size: 14pt; font-weight: bold; }
+    .outlet-name2 { font-size: 11pt; }
+    .outlet-address { font-size: 9pt; margin-top: 2mm; white-space: pre-line; }
     
-    .shift-info {
-        margin: 5px 0;
-        text-align: right;
+    .doc-info-box {
+        padding: 0;
+    }
+    .doc-type { font-size: 11pt; font-weight: bold; color: #333; margin-bottom: 2mm; }
+    .doc-details { font-size: 9pt; }
+    .doc-row { display: table; width: 100%; }
+    .doc-row > span { display: table-cell; }
+    .doc-row > span:first-child { font-weight: bold; width: 40%; }
+    .doc-row > span:last-child { text-align: right; }
+    
+    .two-col {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 3mm 0;
+    }
+    .two-col > tbody > tr > td {
+        width: 50%;
+        vertical-align: top;
+        padding: 0;
+        border: none;
+    }
+    .two-col > tbody > tr > td:first-child {
+        padding-right: 3mm;
+    }
+    .two-col > tbody > tr > td:last-child {
+        padding-left: 3mm;
     }
     
     .section {
-        margin: 15px 0;
-        padding-left: 15px;
-        border-left: 1px solid #2c3e50;
+        margin: 0 0 3mm 0;
     }
-    .section-title {
-        font-weight: bold;
-        font-size: 10pt;
-        margin-bottom: 8px;
-        margin-left: -15px;
-        padding: 5px 10px;
-        background: #f0f0f0;
-        border-bottom: 1px solid #333;
+    .section-title { 
+        font-size: 8pt; 
+        font-weight: bold; 
+        margin-bottom: 2mm; 
+        border-bottom: 1px solid #ddd; 
+        padding: 1mm; 
+        background: #f5f5f5;
     }
     .section-content {
-        padding: 10px 0;
-    }
-    .section-content-param {
-        padding: 5px;
-        line-height: 1.2;
-    }
-    .section-content-param .date-range {
-        margin: 2px 0;
-    }
-    .section-content-param .shift-info {
-        margin: 2px 0;
-    }
-    .section-content-param > div {
-        margin: 2px 0;
+        padding-left: 3mm;
     }
     
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 5px 0;
-        font-size: 10pt;
-    }
+    table.data-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
     
     th {
         background: #3c4248;
         color: white;
-        font-size: 9pt;
+        padding: 2mm 1.5mm;
         text-align: left;
-        padding: 5px 8px;
+        border: 1px solid #555;
     }
-    th.amount { text-align: right; }
+    th.amt { text-align: right; }
+    th.ctr { text-align: center; }
     
     td {
-        padding: 4px 8px;
-        border-bottom: 1px solid #eee;
-    }
-    td.amount { text-align: right; }
-    
-    .bordered td {
+        padding: 1.5mm 1.5mm;
         border: 1px solid #ddd;
+        vertical-align: top;
     }
+    td.amt { text-align: right; }
+    td.ctr { text-align: center; }
     
     tr:nth-child(even) { background: #f9f9f9; }
     
-    .total-row {
-        font-weight: bold;
-        background: #f0f0f0 !important;
-    }
-    .total-row td {
-        border-top: 2px solid #333;
-    }
+    .total-row { font-weight: bold; background: #f0f0f0 !important; }
+    .total-row td { border-top: 2px solid #333; }
     
-    .summary-table {
-        width: auto;
-        min-width: 300px;
-    }
-    .summary-table td:first-child {
-        padding-right: 30px;
-    }
+    .page-info { text-align: right; font-size: 4pt; font-style: italic; color: #666; margin-top: 3mm; }
     
-    .narrow-section {
-        max-width: 400px;
-    }
-    
-    .two-column {
-        display: flex;
-        justify-content: space-between;
-    }
-    .two-column > div {
-        width: 48%;
-    }
-    
-    .highlight {
-        background: #2c3e50;
-        padding: 5px;
-        margin: 5px 0;
-    }
-    
-    .footer {
-        margin-top: 30px;
-        padding-top: 10px;
-        border-top: 1px solid #ddd;
-        font-size: 7pt;
-        color: #666;
+    /* Print styles */
+    @media print {
+        html, body {
+            width: 100%;
+        }
     }
 </style>
 </head>
 <body>
 <div class="page-content">
-    <div class="header">
-        <div class="title">{{title}}</div>
-        <div class="meta">
-            <div>Date computed: {{date_computed}}</div>
-            <div>Print at: {{terminal_name}}</div>
-        </div>
-    </div>
-    
-    <div class="outlet-info">
-        <div class="outlet-name">{{outlet_code}} {{outlet_name}}</div>
-        {{#if outlet_name2}}<div>{{outlet_name2}}</div>{{/if}}
-        <div>{{outlet_address_1}}</div>
-        <div>{{outlet_address_2}}</div>
-        <div>{{outlet_address_3}}</div>
-        {{#if outlet_address_4}}<div>{{outlet_address_4}}</div>{{/if}}
-    </div>
-    
-    <div >
-        <div class="section-content-param">
-            <div class="date-range">
-                <div>FROM: {{from_date}}</div>
-                <div>TO: {{to_date}}</div>
-            </div>
-            <div class="date-range">
-                <div>Number of receipts: {{num_receipts}}</div>               
-                {{#if is_shift}}<div>Shift ID: {{shift_id}}</div>{{/if}}
-            </div>
-        </div>
-    </div>
-    
-    {{#if show_category}}
-    <div class="section">
-        <div class="section-title">TOTAL BY CATEGORY</div>
-        <div class="section-content">
-        <table class="summary-table">
-            <thead>
-                <tr>
-                    <th>CATEGORY</th>
-                    <th class="amount">AMOUNT</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{#each categories}}
-                <tr>
-                    <td>{{name}}</td>
-                    <td class="amount">{{amount}}</td>
-                </tr>
-                {{/each}}
-                <tr class="total-row">
-                    <td>**Total</td>
-                    <td class="amount">{{total_sales}}</td>
-                </tr>
-            </tbody>
-        </table>
-        </div>
-    </div>
-    {{/if}}
-    
-    {{#if show_by_date}}
-    <div class="section">
-        <div class="section-title">TOTAL BY DATE</div>
-        <div class="section-content">
-        <table>
-            <thead>
-                <tr>
-                    <th>DATE</th>
-                    <th class="amount">GST</th>
-                    <th class="amount">AMOUNT</th>
-                    <th class="amount">TOTAL</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{#each dates}}
-                <tr>
-                    <td>{{date}}</td>
-                    <td class="amount">{{gst}}</td>
-                    <td class="amount">{{amount}}</td>
-                    <td class="amount">{{total}}</td>
-                </tr>
-                {{/each}}
-                <tr class="total-row">
-                    <td>**Total</td>
-                    <td class="amount">{{dates_total_gst}}</td>
-                    <td class="amount">{{dates_total_amount}}</td>
-                    <td class="amount">{{dates_total}}</td>
-                </tr>
-            </tbody>
-        </table>
-        </div>
-    </div>
-    {{/if}}
-    
-    <div class="section">
-        <div class="section-title">TOTAL BY PAYMENT TYPE</div>
-        <div class="section-content">
-        <table class="summary-table">
-            <thead>
-                <tr>
-                    <th>PAYMENT TYPE</th>
-                    <th class="amount">AMOUNT</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{#each payment_types}}
-                <tr>
-                    <td>{{name}}</td>
-                    <td class="amount">{{amount}}</td>
-                </tr>
-                {{/each}}
-                <tr class="total-row">
-                    <td>**Total Discount &amp; Rounding</td>
-                    <td class="amount">{{total_discount_rounding}}</td>
-                </tr>
-                <tr class="total-row">
-                    <td>**Total GST Collected</td>
-                    <td class="amount">{{total_gst}}</td>
-                </tr>
-            </tbody>
-        </table>
-        </div>
-    </div>
-    
-    <div class="section">
-        <div class="section-title">CASH TAKEN OUT FROM DRAWER</div>
-        <div class="section-content">
-        <table class="summary-table">
-            <thead>
-                <tr>
-                    <th>TYPE</th>
-                    <th class="amount">AMOUNT</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{#each cash_outs}}
-                <tr>
-                    <td>{{name}}</td>
-                    <td class="amount">{{amount}}</td>
-                </tr>
-                {{/each}}
-                <tr class="total-row">
-                    <td>**Total Cash Taken Out</td>
-                    <td class="amount">{{total_cash_out}}</td>
-                </tr>
-            </tbody>
-        </table>
-        </div>
-    </div>
-    
-    <div class="section">
-        <div class="section-title">SUMMARY</div>
-        <div class="section-content">
-        <table class="summary-table">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th class="amount">AMOUNT</th>
-                </tr>
-            </thead>
+    <table class="letterhead">
+        <tr>
+            <td class="letterhead-left">
+                <div class="outlet-name">{{outlet_code}} {{outlet_name}}</div>
+                {{#if outlet_name2}}<div class="outlet-name2">{{outlet_name2}}</div>{{/if}}
+                <div class="outlet-address">{{outlet_address_1}}
+{{outlet_address_2}}
+{{outlet_address_3}}{{#if outlet_address_4}}
+{{outlet_address_4}}{{/if}}</div>
+            </td>
+            <td class="letterhead-middle">
+                <div class="doc-info-box">
+                    <div class="doc-type">{{title}}</div>
+                    <div class="doc-details">
+                        <div class="doc-row"><span>Date:</span><span>{{date_computed}}</span></div>
+                        <div class="doc-row"><span>Terminal:</span><span>{{terminal_name}}</span></div>
+                    </div>
+                </div>
+            </td>
+            <td class="letterhead-right">
+                <div class="doc-info-box">
+                    <div class="doc-type">Parameters</div>
+                    <div class="doc-details">
+                        <div class="doc-row"><span>From:</span><span>{{from_date}}</span></div>
+                        <div class="doc-row"><span>To:</span><span>{{to_date}}</span></div>
+                        <div class="doc-row"><span>Receipts:</span><span>{{num_receipts}}</span></div>
+                        <div class="doc-row"><span>Total:</span><span>{{total_sales}}</span></div>
+                        {{#if is_shift}}<div class="doc-row"><span>Shift:</span><span>{{shift_id}}</span></div>{{/if}}
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
 
-            <tbody>
-                <tr>
-                    <td>Return/Cancelled</td>
-                    <td class="amount">{{return_cancelled}}</td>
-                </tr>
-                {{#if show_starting_cash}}
-                <tr>
-                    <td>STARTING CASH</td>
-                    <td class="amount">{{starting_cash}}</td>
-                </tr>
+    <!-- Row 1: Total by Category | Total by Date -->
+    <table class="two-col">
+        <tr>
+            <td>
+                {{#if show_category}}
+                <div class="section">
+                    <div class="section-title">TOTAL BY CATEGORY</div>
+                    <div class="section-content">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>CATEGORY</th>
+                                <th class="amt">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each categories}}
+                            <tr>
+                                <td>{{name}}</td>
+                                <td class="amt">{{amount}}</td>
+                            </tr>
+                            {{/each}}
+                            <tr class="total-row">
+                                <td>Total</td>
+                                <td class="amt">{{total_sales}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
                 {{/if}}
-                {{#if show_cash_in_drawer}}
-                <tr>
-                    <td>CASH IN DRAWER</td>
-                    <td class="amount">{{cash_in_drawer}}</td>
-                </tr>
+            </td>
+            <td>
+                {{#if show_by_date}}
+                <div class="section">
+                    <div class="section-title">TOTAL BY DATE</div>
+                    <div class="section-content">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>DATE</th>
+                                <th class="amt">GST</th>
+                                <th class="amt">AMOUNT</th>
+                                <th class="amt">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each dates}}
+                            <tr>
+                                <td>{{date}}</td>
+                                <td class="amt">{{gst}}</td>
+                                <td class="amt">{{amount}}</td>
+                                <td class="amt">{{total}}</td>
+                            </tr>
+                            {{/each}}
+                            <tr class="total-row">
+                                <td>Total</td>
+                                <td class="amt">{{dates_total_gst}}</td>
+                                <td class="amt">{{dates_total_amount}}</td>
+                                <td class="amt">{{dates_total}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
                 {{/if}}
-                {{#if show_closing_cash}}
-                <tr>
-                    <td>REPORTED CLOSING CASH</td>
-                    <td class="amount">{{closing_cash}}</td>
-                </tr>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Row 2: Total by Payment Type | Summary -->
+    <table class="two-col">
+        <tr>
+            <td>
+                <div class="section">
+                    <div class="section-title">TOTAL BY PAYMENT TYPE</div>
+                    <div class="section-content">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>PAYMENT TYPE</th>
+                                <th class="amt">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each payment_types}}
+                            <tr>
+                                <td>{{name}}</td>
+                                <td class="amt">{{amount}}</td>
+                            </tr>
+                            {{/each}}
+                            <tr class="total-row">
+                                <td>Total Discount &amp; Rounding</td>
+                                <td class="amt">{{total_discount_rounding}}</td>
+                            </tr>
+                            <tr class="total-row">
+                                <td>Total GST Collected</td>
+                                <td class="amt">{{total_gst}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="section">
+                    <div class="section-title">SUMMARY</div>
+                    <div class="section-content">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th class="amt">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Return/Cancelled</td>
+                                <td class="amt">{{return_cancelled}}</td>
+                            </tr>
+                            <tr>
+                                <td>STARTING CASH</td>
+                                <td class="amt">{{starting_cash}}</td>
+                            </tr>
+                            <tr>
+                                <td>CASH IN DRAWER</td>
+                                <td class="amt">{{cash_in_drawer}}</td>
+                            </tr>
+                            <tr>
+                                <td>REPORTED CLOSING CASH</td>
+                                <td class="amt">{{closing_cash}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Row 3: Cash Taken Out | Membership Rewards -->
+    <table class="two-col">
+        <tr>
+            <td>
+                <div class="section">
+                    <div class="section-title">CASH TAKEN OUT FROM DRAWER</div>
+                    <div class="section-content">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>TYPE</th>
+                                <th class="amt">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {{#each cash_outs}}
+                            <tr>
+                                <td>{{name}}</td>
+                                <td class="amt">{{amount}}</td>
+                            </tr>
+                            {{/each}}
+                            <tr class="total-row">
+                                <td>Total Cash Taken Out</td>
+                                <td class="amt">{{total_cash_out}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+            </td>
+            <td>
+                {{#if show_membership}}
+                <div class="section">
+                    <div class="section-title">MEMBERSHIP REWARDS</div>
+                    <div class="section-content">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th class="amt">POINTS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Point Given</td>
+                                <td class="amt">{{points_given}}</td>
+                            </tr>
+                            <tr>
+                                <td>Point Reimbursed</td>
+                                <td class="amt">{{points_reimbursed}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
                 {{/if}}
-            </tbody>
-        </table>
-        </div>
-    </div>
-    
-    {{#if show_membership}}
-    <div class="section">
-        <div class="section-title">MEMBERSHIP REWARDS</div>
-        <div class="section-content">
-        <table class="summary-table">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th class="amount">POINTS</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Point Given</td>
-                    <td class="amount">{{points_given}}</td>
-                </tr>
-                <tr>
-                    <td>Point Reimbursed</td>
-                    <td class="amount">{{points_reimbursed}}</td>
-                </tr>
-            </tbody>
-        </table>
-        </div>
-    </div>
-    {{/if}}
-    
+            </td>
+        </tr>
+    </table>
+
     {{#if show_by_customer}}
     <div class="section">
         <div class="section-title">TOTAL BY CUSTOMER</div>
         <div class="section-content">
-        <table>
+        <table class="data-table">
             <thead>
                 <tr>
                     <th>CUSTOMER</th>
-                    <th class="amount">SALES</th>
-                    <th class="amount">COST</th>
-                    <th class="amount">MGN</th>
+                    <th class="amt">SALES</th>
+                    <th class="amt">COST</th>
+                    <th class="amt">MGN</th>
                 </tr>
             </thead>
             <tbody>
                 {{#each customers}}
                 <tr>
                     <td>{{name}}</td>
-                    <td class="amount">{{sales}}</td>
-                    <td class="amount">{{cost}}</td>
-                    <td class="amount">{{margin}}</td>
+                    <td class="amt">{{sales}}</td>
+                    <td class="amt">{{cost}}</td>
+                    <td class="amt">{{margin}}</td>
                 </tr>
                 {{/each}}
                 <tr class="total-row">
                     <td>Total</td>
-                    <td class="amount">{{customer_total_sales}}</td>
-                    <td class="amount">{{customer_total_cost}}</td>
-                    <td class="amount">{{customer_total_margin}}</td>
+                    <td class="amt">{{customer_total_sales}}</td>
+                    <td class="amt">{{customer_total_cost}}</td>
+                    <td class="amt">{{customer_total_margin}}</td>
                 </tr>
             </tbody>
         </table>
         </div>
     </div>
     {{/if}}
-    
-    <div class="footer">
-        Generated by PharmaPOS
-    </div>
+
+    <div class="page-info">Generated by PharmaPOS</div>
 </div><!-- end page-content -->
 </body>
 </html>

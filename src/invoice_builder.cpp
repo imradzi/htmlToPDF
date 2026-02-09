@@ -14,7 +14,28 @@ std::string InvoicePDFBuilder::colorToHex(unsigned char r, unsigned char g, unsi
 std::string InvoicePDFBuilder::formatNumber(double value, int decimals) {
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(decimals) << value;
-    return oss.str();
+    std::string numStr = oss.str();
+    
+    // Add thousand separators
+    size_t dotPos = numStr.find('.');
+    std::string intPart = (dotPos != std::string::npos) ? numStr.substr(0, dotPos) : numStr;
+    std::string decPart = (dotPos != std::string::npos) ? numStr.substr(dotPos) : "";
+    
+    // Handle negative numbers
+    bool isNegative = (!intPart.empty() && intPart[0] == '-');
+    if (isNegative) intPart = intPart.substr(1);
+    
+    // Insert commas from right to left
+    std::string result;
+    int count = 0;
+    for (int i = static_cast<int>(intPart.length()) - 1; i >= 0; --i) {
+        if (count > 0 && count % 3 == 0) result = ',' + result;
+        result = intPart[i] + result;
+        ++count;
+    }
+    
+    if (isNegative) result = '-' + result;
+    return result + decPart;
 }
 
 std::string InvoicePDFBuilder::formatQuantity(double value) {

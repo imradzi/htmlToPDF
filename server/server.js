@@ -71,7 +71,7 @@ const mockInvoiceData = {
   
   // e-Invoice (optional) - QR code will be generated dynamically
   has_e_invoice: true,
-  e_invoice_qr: '', // Will be populated at runtime
+  e_invoice_png: '', // Will be populated at runtime
   
   // Document type flags
   is_invoice: true,
@@ -631,7 +631,7 @@ app.get('/', (req, res) => {
 app.get('/invoice', async (req, res) => {
   // Generate QR code as base64 data URI (simulates C++ production behavior)
   const qrData = await generateQRBase64('INV-2026-0042-LHDN-EINVOICE-VALIDATION');
-  const data = { ...mockInvoiceData, e_invoice_qr: qrData };
+  const data = { ...mockInvoiceData, e_invoice_png: qrData };
   res.render('invoice.html', data);
 });
 
@@ -640,7 +640,7 @@ app.get('/invoice-landscape', async (req, res) => {
   const qrData = await generateQRBase64('INV-2026-0042-LHDN-EINVOICE-VALIDATION');
   const data = { 
     ...mockInvoiceData, 
-    e_invoice_qr: qrData,
+    e_invoice_png: qrData,
     orientation: 'landscape',
     is_landscape: true
   };

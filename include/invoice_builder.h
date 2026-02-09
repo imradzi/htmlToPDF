@@ -108,7 +108,7 @@ public:
         std::vector<std::string> remarks;
         
         // e-Invoice QR
-        std::string eInvoiceQR;
+        std::string eInvoicePNG;
         
         // Theme
         ThemeColors theme;
@@ -119,7 +119,7 @@ public:
         int itemsPerPagePortrait;
         int itemsPerPageLandscape;
         
-        PaginationConfig() : itemsPerPagePortrait(25), itemsPerPageLandscape(12) {}
+        PaginationConfig() : itemsPerPagePortrait(31), itemsPerPageLandscape(18) {}
     };
 
     // Calculate items per page based on orientation

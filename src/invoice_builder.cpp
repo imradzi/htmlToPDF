@@ -2,6 +2,7 @@
 #include <sstream>
 #include <iomanip>
 #include <cstdio>
+#include "logger.h"
 
 // InvoicePDFBuilder implementations
 std::string InvoicePDFBuilder::colorToHex(unsigned char r, unsigned char g, unsigned char b) {
@@ -216,9 +217,17 @@ TemplateContext InvoicePDFBuilder::buildContext(const InvoiceData& data) {
     }
     vars["has_remarks"] = !data.remarks.empty() ? "1" : "";
     
-    // e-Invoice
-    vars["e_invoice_qr"] = data.eInvoiceQR;
-    vars["has_e_invoice"] = !data.eInvoiceQR.empty() ? "1" : "";
+    // e-Invoice - add data URI prefix for base64 PNG
+    if (!data.eInvoicePNG.empty()) {
+        std::string dataUri = "data:image/png;base64," + data.eInvoicePNG;
+        LOG_INFO("e_invoice_png length: {}, prefix: {}", dataUri.length(), dataUri.substr(0, 50));
+        vars["e_invoice_png"] = dataUri;
+        vars["has_e_invoice"] = "1";
+    } else {
+        LOG_INFO("e_invoice_png is EMPTY");
+        vars["e_invoice_png"] = "";
+        vars["has_e_invoice"] = "";
+    }
     
     return ctx;
 }

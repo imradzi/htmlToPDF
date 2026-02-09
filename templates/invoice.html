@@ -6,19 +6,19 @@
     /* A4 Page Setup */
     @page {
         size: A4 {{orientation}};
-        margin: 5mm;
+        margin: 0;
     }
     
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     html, body {
-        width: 210mm;
+        width: 100%;
     }
     
     /* Landscape mode adjustments */
     {{#if is_landscape}}
     html, body {
-        width: 297mm;
+        width: 100%;
     }
     {{/if}}
     
@@ -26,7 +26,7 @@
         font-family: Arial, sans-serif; 
         font-size: 9pt; 
         color: #333; 
-        padding: 10mm;
+        padding: 8mm;
         line-height: 1.3;
     }
     
@@ -36,17 +36,18 @@
     .letterhead {
         width: 100%;
         margin-bottom: 8mm;
-        border-collapse: separate;
-        border-spacing: 3mm;
+        border-collapse: collapse;
     }
     .letterhead-left {
         width: 70%;
         padding: 3mm;
-        background: {{letterhead_fill_color}};
-        border: 1px solid {{box_color}};
+        background: #f5f5f5;
+        border: 1px solid #ddd;
         vertical-align: top;
     }
     .letterhead-right {
+        background: #f5f5f5;
+        border: 1px solid #ddd;
         width: 30%;
         vertical-align: top;
     }
@@ -61,27 +62,25 @@
     .header-section {
         width: 100%;
         margin-bottom: 5mm;
-        border-collapse: separate;
+        border-collapse: collapse;
         border-spacing: 3mm;
     }
     
     .party-box {
         width: 50%;
         padding: 3mm;
-        border: 1px solid {{box_color}};
-        background: #fafafa;
+        border: 1px solid #ddd;
         vertical-align: top;
     }
-    .party-label { font-size: 8pt; color: #666; margin-bottom: 1mm; }
-    .party-name { font-weight: bold; }
+    .party-label { font-size: 8pt; font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding: 1mm; background: #f5f5f5; margin: -3mm -3mm 2mm -3mm; }
+
+    .party-name { font-size: 9pt;font-weight: bold; }
     .party-address { font-size: 8pt; white-space: pre-line; }
     .party-id { font-size: 8pt; margin-top: 1mm; }
     
     .doc-info-box {
         text-align: right;
         padding: 3mm;
-        border: 2px solid {{theme_color}};
-        background: {{fill_color}};
         min-width: 50mm;
     }
     .doc-type { font-size: 14pt; font-weight: bold; color: #333; }
@@ -91,8 +90,9 @@
     .doc-details div { margin: 1mm 0; }
     .doc-details .amt { font-weight: bold;}
     
-    .qr-code { padding-left: 3mm; vertical-align: middle; }
+    .qr-code { padding-left: 3mm; vertical-align: middle; text-align: center; }
     .qr-code img { width: 20mm; height: 20mm; }
+    .qr-label { font-size: 6pt; color: #666; margin-top: 0; }
     
     .items-section { 
         margin: 5mm 0;
@@ -174,7 +174,7 @@
     .footer-table.signatures td {
         width: 33.33%;
     }
-    .footer-label { font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding-bottom: 1mm; }
+    .footer-label { font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding: 1mm; background: #f5f5f5; margin: -2mm -2mm 2mm -2mm; }
     .footer-content { font-style: italic; font-size: 7pt; }
     
     .signature-line {
@@ -190,13 +190,8 @@
     /* Print styles */
     @media print {
         html, body {
-            width: 210mm;
+            width: 100%;
         }
-        {{#if is_landscape}}
-        html, body {
-            width: 297mm;
-        }
-        {{/if}}
     }
 </style>
 </head>
@@ -226,7 +221,8 @@
                             </td>
                             {{#if has_e_invoice}}
                             <td class="qr-code">
-                                <img src="{{{e_invoice_qr}}}" alt="e-Invoice QR" />
+                                <img src="{{{e_invoice_png}}}" alt="e-Invoice QR" />
+                                <div class="qr-label">e-Invoice QR</div>
                             </td>
                             {{/if}}
                         </tr>

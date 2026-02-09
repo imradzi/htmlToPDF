@@ -140,9 +140,18 @@ std::string TemplateEngine::replaceVariable(const std::string& input,
                                              const std::string& key,
                                              const std::string& value) {
     std::string result = input;
-    std::string placeholder = "{{" + key + "}}";
     
+    // First replace triple-brace syntax {{{key}}} (unescaped in Mustache, same here)
+    std::string triplePlaceholder = "{{{" + key + "}}}";
     size_t pos = 0;
+    while ((pos = result.find(triplePlaceholder, pos)) != std::string::npos) {
+        result.replace(pos, triplePlaceholder.length(), value);
+        pos += value.length();
+    }
+    
+    // Then replace double-brace syntax {{key}}
+    std::string placeholder = "{{" + key + "}}";
+    pos = 0;
     while ((pos = result.find(placeholder, pos)) != std::string::npos) {
         result.replace(pos, placeholder.length(), value);
         pos += value.length();

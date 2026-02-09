@@ -114,6 +114,23 @@ public:
         ThemeColors theme;
     };
 
+    // Pagination configuration
+    struct PaginationConfig {
+        int itemsPerPagePortrait;
+        int itemsPerPageLandscape;
+        
+        PaginationConfig() : itemsPerPagePortrait(25), itemsPerPageLandscape(12) {}
+    };
+
+    // Calculate items per page based on orientation
+    static int getItemsPerPage(bool isLandscape, const PaginationConfig& config = PaginationConfig());
+    
+    // Calculate total pages for a given number of items
+    static int calculateTotalPages(int itemCount, bool isLandscape, const PaginationConfig& config = PaginationConfig());
+    
+    // Split items into pages - returns vector of InvoiceData, one per page
+    static std::vector<InvoiceData> paginateInvoice(const InvoiceData& data, const PaginationConfig& config = PaginationConfig());
+
     // Build template context from invoice data
     static TemplateContext buildContext(const InvoiceData& data);
     

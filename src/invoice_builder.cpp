@@ -33,6 +33,61 @@ std::string InvoicePDFBuilder::formatQuantity(double value) {
     return result;
 }
 
+int InvoicePDFBuilder::getItemsPerPage(bool isLandscape, const PaginationConfig& config) {
+    return isLandscape ? config.itemsPerPageLandscape : config.itemsPerPagePortrait;
+}
+
+int InvoicePDFBuilder::calculateTotalPages(int itemCount, bool isLandscape, const PaginationConfig& config) {
+    int itemsPerPage = getItemsPerPage(isLandscape, config);
+    if (itemCount <= 0) return 1;
+    return (itemCount + itemsPerPage - 1) / itemsPerPage;  // Ceiling division
+}
+
+std::vector<InvoicePDFBuilder::InvoiceData> InvoicePDFBuilder::paginateInvoice(
+    const InvoiceData& data, const PaginationConfig& config) {
+    
+    std::vector<InvoiceData> pages;
+    int itemsPerPage = getItemsPerPage(data.isLandscape, config);
+    int totalItems = static_cast<int>(data.items.size());
+    int totalPages = calculateTotalPages(totalItems, data.isLandscape, config);
+    
+    if (totalPages <= 1) {
+        // Single page - just set the page numbers
+        InvoiceData singlePage = data;
+        singlePage.pageNo = 1;
+        singlePage.totalPages = 1;
+        pages.push_back(singlePage);
+        return pages;
+    }
+    
+    // Split items across pages
+    for (int pageIdx = 0; pageIdx < totalPages; ++pageIdx) {
+        InvoiceData pageData = data;  // Copy all common data
+        pageData.pageNo = pageIdx + 1;
+        pageData.totalPages = totalPages;
+        pageData.items.clear();
+        
+        // Calculate item range for this page
+        int startIdx = pageIdx * itemsPerPage;
+        int endIdx = std::min(startIdx + itemsPerPage, totalItems);
+        
+        // Copy items for this page
+        for (int i = startIdx; i < endIdx; ++i) {
+            pageData.items.push_back(data.items[i]);
+        }
+        
+        // Only show totals on the last page
+        if (pageIdx < totalPages - 1) {
+            // Clear totals for non-last pages (or you could set a flag)
+            // Actually, keep totals but template should only show on last page
+        }
+        
+        pages.push_back(pageData);
+    }
+    
+    return pages;
+}
+
 TemplateContext InvoicePDFBuilder::buildContext(const InvoiceData& data) {
     TemplateContext ctx;
     auto& vars = ctx.variables;
@@ -56,6 +111,7 @@ TemplateContext InvoicePDFBuilder::buildContext(const InvoiceData& data) {
     vars["term"] = data.term;
     vars["page_no"] = std::to_string(data.pageNo);
     vars["total_pages"] = std::to_string(data.totalPages);
+    vars["is_last_page"] = (data.pageNo == data.totalPages) ? "1" : "";
     
     // Outlet info
     vars["outlet_name"] = data.outlet.name;

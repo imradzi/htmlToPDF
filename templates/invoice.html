@@ -6,21 +6,19 @@
     /* A4 Page Setup */
     @page {
         size: A4 {{orientation}};
-        margin: 0;
+        margin: 5mm;
     }
     
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     html, body {
         width: 210mm;
-        min-height: 297mm;
     }
     
     /* Landscape mode adjustments */
     {{#if is_landscape}}
     html, body {
         width: 297mm;
-        min-height: 210mm;
     }
     {{/if}}
     
@@ -28,16 +26,11 @@
         font-family: Arial, sans-serif; 
         font-size: 9pt; 
         color: #333; 
-        padding: 15mm;
+        padding: 10mm;
         line-height: 1.3;
-        display: flex;
-        flex-direction: column;
     }
     
     .page-content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
     }
     
     .letterhead {
@@ -96,21 +89,15 @@
     .doc-info-content td { border: none; padding: 0; vertical-align: top; }
     .doc-details { font-size: 9pt; text-align: right; }
     .doc-details div { margin: 1mm 0; }
+    .doc-details .amt { font-weight: bold;}
     
     .qr-code { padding-left: 3mm; vertical-align: middle; }
     .qr-code img { width: 20mm; height: 20mm; }
     
     .items-section { 
-        flex: 1;
         margin: 5mm 0;
-        display: flex;
-        flex-direction: column;
     }
     .items-label { font-size: 9pt; margin-bottom: 2mm; }
-    
-    .items-table-wrapper {
-        flex: 1;
-    }
     
     .items-table { 
         width: 100%; 
@@ -171,21 +158,22 @@
     .total-row { font-weight: bold; background: #f0f0f0 !important; }
     .total-row td { border-top: 2px solid #333; }
     
-    .footer-section {
-        display: flex;
-        justify-content: space-between;
-        margin-top: auto;
-        padding-top: 5mm;
+    .footer-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 2mm;
+        margin-top: 5mm;
         font-size: 8pt;
-        gap: 3mm;
     }
-    .footer-box {
-        flex: 1;
+    .footer-table td {
         padding: 2mm;
         border: 1px solid #ddd;
-        min-height: 20mm;
+        vertical-align: top;
+        width: 50%;
     }
-    .footer-box.wide { flex: 2; }
+    .footer-table.signatures td {
+        width: 33.33%;
+    }
     .footer-label { font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding-bottom: 1mm; }
     .footer-content { font-style: italic; font-size: 7pt; }
     
@@ -197,18 +185,16 @@
         font-size: 7pt;
     }
     
-    .page-info { text-align: right; font-size: 2pt; color: #666; margin-top: 3mm; }
+    .page-info { text-align: right; font-size: 4pt; font-style: italic; color: #666; margin-top: 3mm; }
     
     /* Print styles */
     @media print {
         html, body {
             width: 210mm;
-            height: 297mm;
         }
         {{#if is_landscape}}
         html, body {
             width: 297mm;
-            height: 210mm;
         }
         {{/if}}
     }
@@ -236,6 +222,7 @@
                                 {{#if is_purchase_order}}<div>Our Ref: {{id}}</div>{{/if}}
                                 <div>Page: {{page_no}} of {{total_pages}}</div>
                                 <div>Term: {{term}}</div>
+                                <div class="amt">TOTAL: {{total_amount}}</div>
                             </td>
                             {{#if has_e_invoice}}
                             <td class="qr-code">
@@ -282,13 +269,13 @@
                     {{#if show_batch_expiry}}<th>BATCH</th><th>EXPIRY</th>{{/if}}
                     <th class="amt">QTY</th>
                     {{#if show_bonus}}<th class="amt">BONUS</th>{{/if}}
-                    {{#if show_gst}}
+                    
                     <th class="amt">PRICE</th>
                     {{#if show_srp}}<th class="amt">SRP</th>{{/if}}
                     {{#if show_discount}}<th class="amt">DISC</th>{{/if}}
-                    <th class="amt">GST</th>
+                    {{#if show_gst}}<th class="amt">GST</th>{{/if}}
                     <th class="amt">AMOUNT</th>
-                    {{/if}}
+                    
                 </tr>
             </thead>
             <tbody>
@@ -302,16 +289,15 @@
                     {{#if show_batch_expiry}}<td>{{batch_no}}</td><td>{{expiry_date}}</td>{{/if}}
                     <td class="amt">{{quantity}}</td>
                     {{#if show_bonus}}<td class="amt">{{bonus}}</td>{{/if}}
-                    {{#if show_gst}}
+                    
                     <td class="amt">{{price}}</td>
                     {{#if show_srp}}<td class="amt">{{selling_price}}</td>{{/if}}
                     {{#if show_discount}}<td class="amt">{{discount}}</td>{{/if}}
-                    <td class="amt">{{gst}}</td>
+                    {{#if show_gst}}<td class="amt">{{gst}}</td>{{/if}}
                     <td class="amt">{{amount}}</td>
-                    {{/if}}
                 </tr>
                 {{/each}}
-                {{#if show_gst}}
+                {{#if is_last_page}}
                 <tr class="total-row">
                     <td></td>
                     {{#if show_code}}<td></td>{{/if}}
@@ -324,7 +310,7 @@
                     <td class="amt">TOTAL</td>
                     {{#if show_srp}}<td></td>{{/if}}
                     {{#if show_discount}}<td class="amt">{{total_discount}}</td>{{/if}}
-                    <td class="amt">{{total_gst}}</td>
+                    {{#if show_gst}}<td class="amt">{{total_gst}}</td>{{/if}}
                     <td class="amt">{{total_amount}}</td>
                 </tr>
                 {{/if}}
@@ -332,32 +318,40 @@
         </table>
     </div>
 
-    <div class="footer-section">
-        <div class="footer-box wide">
-            <div class="footer-label">Notes</div>
-            <div class="footer-content">
-                {{#each notes}}<div>{{text}}</div>{{/each}}
-            </div>
-        </div>
-        <div class="footer-box">
-            <div class="footer-label">Remark</div>
-            <div class="footer-content">
-                {{#each remarks}}<div>{{text}}</div>{{/each}}
-            </div>
-        </div>
-        <div class="footer-box">
-            <div class="footer-label">Prepared By</div>
-            <div class="signature-line"></div>
-        </div>
-        <div class="footer-box">
-            <div class="footer-label">Checked By</div>
-            <div class="signature-line"></div>
-        </div>
-        <div class="footer-box">
-            <div class="footer-label">Received in good order</div>
-            <div class="signature-line"></div>
-        </div>
-    </div>
+    {{#if is_last_page}}
+    <table class="footer-table">
+        <tr>
+            <td>
+                <div class="footer-label">Notes</div>
+                <div class="footer-content">
+                    {{#each notes}}<div>{{text}}</div>{{/each}}
+                </div>
+            </td>
+            <td>
+                <div class="footer-label">Remark</div>
+                <div class="footer-content">
+                    {{#each remarks}}<div>{{text}}</div>{{/each}}
+                </div>
+            </td>
+        </tr>
+    </table>
+    <table class="footer-table signatures">
+        <tr>
+            <td>
+                <div class="footer-label">Prepared By</div>
+                <div class="signature-line"></div>
+            </td>
+            <td>
+                <div class="footer-label">Checked By</div>
+                <div class="signature-line"></div>
+            </td>
+            <td>
+                <div class="footer-label">Received in good order</div>
+                <div class="signature-line"></div>
+            </td>
+        </tr>
+    </table>
+    {{/if}}
 
     <div class="page-info">Generated by PharmaPOS</div>
 </div><!-- end page-content -->

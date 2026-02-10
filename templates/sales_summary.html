@@ -17,13 +17,17 @@
     
     body { 
         font-family: Arial, sans-serif; 
-        font-size: 9pt; 
+        font-size: {{#if is_landscape}}11pt{{else}}9pt{{/if}}; 
         color: #333; 
         padding: 0;
         line-height: 1.3;
     }
     
     .page-content {
+        position: relative;
+        min-height: {{#if is_landscape}}200mm{{else}}287mm{{/if}};
+        padding: 5mm;
+        padding-bottom: 15mm;
     }
     
     .letterhead {
@@ -101,7 +105,7 @@
         padding-left: 3mm;
     }
     
-    table.data-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+    table.data-table { width: 100%; border-collapse: collapse; font-size: {{#if is_landscape}}10pt{{else}}8pt{{/if}}; }
     
     th {
         background: #3c4248;
@@ -126,7 +130,15 @@
     .total-row { font-weight: bold; background: #f0f0f0 !important; }
     .total-row td { border-top: 2px solid #333; }
     
-    .page-info { text-align: right; font-size: 4pt; font-style: italic; color: #666; margin-top: 3mm; }
+    .page-info { 
+        position: absolute;
+        bottom: 5mm;
+        right: 5mm;
+        text-align: right; 
+        font-size: 4pt; 
+        font-style: italic; 
+        color: #666;
+    }
     
     /* Print styles */
     @media print {

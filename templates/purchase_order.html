@@ -17,13 +17,17 @@
     
     body { 
         font-family: Arial, sans-serif; 
-        font-size: 9pt; 
+        font-size: {{#if is_landscape}}11pt{{else}}9pt{{/if}}; 
         color: #333; 
         padding: 0;
         line-height: 1.3;
     }
     
     .page-content {
+        position: relative;
+        min-height: {{#if is_landscape}}200mm{{else}}287mm{{/if}};
+        padding: 5mm;
+        padding-bottom: 15mm;
     }
     
     .letterhead {
@@ -44,10 +48,10 @@
         width: 30%;
         vertical-align: top;
     }
-    .outlet-name { font-size: 14pt; font-weight: bold; }
-    .outlet-name2 { font-size: 11pt; }
-    .outlet-address { font-size: 9pt; margin-top: 2mm; white-space: pre-line; }
-    .outlet-reg { font-size: 8pt; color: #666; }
+    .outlet-name { font-size: {{#if is_landscape}}20pt{{else}}18pt{{/if}}; font-weight: bold; }
+    .outlet-name2 { font-size: {{#if is_landscape}}16pt{{else}}14pt{{/if}}; }
+    .outlet-address { font-size: {{#if is_landscape}}9pt{{else}}7pt{{/if}}; margin-top: 2mm; white-space: pre-line; }
+    .outlet-reg { font-size: {{#if is_landscape}}12pt{{else}}8pt{{/if}}; color: #666; }
     
     .header-section {
         width: 100%;
@@ -61,31 +65,32 @@
         border: 1px solid #ddd;
         vertical-align: top;
     }
-    .party-label { font-size: 8pt; font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding: 1mm; background: #f5f5f5; margin: -3mm -3mm 2mm -3mm; }
+    .party-label { font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}}; font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding: 1mm; background: #f5f5f5; margin: -3mm -3mm 2mm -3mm; }
 
-    .party-name { font-size: 9pt; font-weight: bold; }
-    .party-address { font-size: 8pt; white-space: pre-line; }
-    .party-id { font-size: 8pt; margin-top: 1mm; }
+    .party-name { font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}}; font-weight: bold; }
+    .party-address { font-size: {{#if is_landscape}}10pt{{else}}8pt{{/if}}; white-space: pre-line; }
+    .party-id { font-size: {{#if is_landscape}}10pt{{else}}8pt{{/if}}; margin-top: 1mm; }
     
     .doc-info-box {
         text-align: right;
         padding: 3mm;
         min-width: 50mm;
     }
-    .doc-type { font-size: 14pt; font-weight: bold; color: #333; }
+    .doc-type { font-size: {{#if is_landscape}}20pt{{else}}18pt{{/if}}; font-weight: bold; color: #333; }
     .doc-info-content { width: 100%; border-collapse: collapse; margin-top: 2mm; }
     .doc-info-content td { border: none; padding: 0; vertical-align: top; }
-    .doc-details { font-size: 9pt; text-align: right; }
+    .doc-details { font-size: {{#if is_landscape}}11pt{{else}}9pt{{/if}}; text-align: right; }
     .doc-details div { margin: 1mm 0; }
     
     .items-section { 
         margin: 5mm 0;
     }
-    .items-label { font-size: 9pt; margin-bottom: 2mm; }
+    .items-label { font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}}; margin-bottom: 2mm; }
     
-    table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+    table { width: 100%; border-collapse: collapse; font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}}; }
     
     th {
+        font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}};
         background: #3c4248;
         color: white;
         padding: 2mm 1.5mm;
@@ -96,6 +101,7 @@
     th.ctr { text-align: center; }
     
     td {
+        font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}};
         padding: 1.5mm 1.5mm;
         border: 1px solid #ddd;
         vertical-align: top;
@@ -116,7 +122,15 @@
     }
     .remark-label { font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding: 1mm; background: #f5f5f5; margin: -2mm -2mm 2mm -2mm; display: block; }
     
-    .page-info { text-align: right; font-size: 4pt; font-style: italic; color: #666; margin-top: 3mm; }
+    .page-info { 
+        position: absolute;
+        bottom: 5mm;
+        right: 5mm;
+        text-align: right; 
+        font-size: 4pt; 
+        font-style: italic; 
+        color: #666;
+    }
     
     /* Print styles */
     @media print {

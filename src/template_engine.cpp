@@ -5,9 +5,10 @@
 
 // Helper: find innermost {{#if varName}} block (no nested {{#if}} inside)
 static bool findInnermostIfBlock(const std::string& input, size_t& startPos, size_t& endPos,
-                                  std::string& varName, std::string& blockContent) {
+                                  std::string& varName, std::string& ifContent, std::string& elseContent) {
     const std::string ifStart = "{{#if ";
     const std::string ifEnd = "{{/if}}";
+    const std::string elseTag = "{{else}}";
     
     size_t searchFrom = 0;
     while (true) {
@@ -38,11 +39,21 @@ static bool findInnermostIfBlock(const std::string& input, size_t& startPos, siz
             continue;
         }
         
-        // This is an innermost block
+        // This is an innermost block - check for {{else}}
+        size_t elsePos = input.find(elseTag, contentStart);
+        
         startPos = ifPos;
         endPos = endIfPos + ifEnd.length();
         varName = var;
-        blockContent = input.substr(contentStart, endIfPos - contentStart);
+        
+        // Check if {{else}} exists and is within this if block (before {{/if}})
+        if (elsePos != std::string::npos && elsePos < endIfPos) {
+            ifContent = input.substr(contentStart, elsePos - contentStart);
+            elseContent = input.substr(elsePos + elseTag.length(), endIfPos - (elsePos + elseTag.length()));
+        } else {
+            ifContent = input.substr(contentStart, endIfPos - contentStart);
+            elseContent = "";
+        }
         return true;
     }
 }
@@ -104,9 +115,9 @@ std::string TemplateEngine::processIfBlocks(const std::string& input,
     
     // Process innermost {{#if}} blocks iteratively until none remain
     size_t startPos, endPos;
-    std::string varName, blockContent;
+    std::string varName, ifContent, elseContent;
     
-    while (findInnermostIfBlock(result, startPos, endPos, varName, blockContent)) {
+    while (findInnermostIfBlock(result, startPos, endPos, varName, ifContent, elseContent)) {
         std::string replacement;
         
         auto it = variables.find(varName);
@@ -117,7 +128,9 @@ std::string TemplateEngine::processIfBlocks(const std::string& input,
                               it->second != "false");
         
         if (conditionTrue) {
-            replacement = blockContent;
+            replacement = ifContent;
+        } else {
+            replacement = elseContent;
         }
         
         result = result.substr(0, startPos) + replacement + result.substr(endPos);

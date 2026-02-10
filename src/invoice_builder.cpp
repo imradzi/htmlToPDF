@@ -125,6 +125,7 @@ TemplateContext InvoicePDFBuilder::buildContext(const InvoiceData& data) {
     vars["ref_title"] = data.refTitle;
     vars["is_draft"] = data.isDraft ? "1" : "";
     vars["is_landscape"] = data.isLandscape ? "1" : "";
+    vars["orientation"] = data.isLandscape ? "landscape" : "portrait";
     
     // Header info
     vars["id"] = data.id;
@@ -345,6 +346,10 @@ TemplateContext PoisonOrderPDFBuilder::buildContext(const PoisonOrderData& data)
     vars["box_color"] = colorToHex(data.theme.boxColorRed, data.theme.boxColorGreen, data.theme.boxColorBlue);
     vars["fill_color"] = data.theme.fillRect ? colorToHex(data.theme.fillColorRed, data.theme.fillColorGreen, data.theme.fillColorBlue) : "#ffffff";
     vars["letterhead_fill_color"] = data.theme.letterheadFillRect ? colorToHex(data.theme.fillColorRed, data.theme.fillColorGreen, data.theme.fillColorBlue) : "#ffffff";
+    
+    // Orientation
+    vars["is_landscape"] = data.isLandscape ? "1" : "";
+    vars["orientation"] = data.isLandscape ? "landscape" : "portrait";
     
     // Header info
     vars["title"] = data.title;

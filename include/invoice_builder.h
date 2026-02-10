@@ -119,7 +119,7 @@ public:
         int itemsPerPagePortrait;
         int itemsPerPageLandscape;
         
-        PaginationConfig() : itemsPerPagePortrait(31), itemsPerPageLandscape(18) {}
+        PaginationConfig() : itemsPerPagePortrait(31), itemsPerPageLandscape(12) {}
     };
 
     // Calculate items per page based on orientation
@@ -213,6 +213,7 @@ public:
         std::string term;
         int pageNo = 1;
         int totalPages = 1;
+        bool isLandscape = false;
         
         // Outlet info
         InvoicePDFBuilder::OutletInfo outlet;

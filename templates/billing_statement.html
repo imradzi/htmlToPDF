@@ -15,21 +15,19 @@
         width: 100%;
     }
     
-    {{#if is_landscape}}
-    html, body {
-        width: 100%;
-    }
-    {{/if}}
-    
     body { 
         font-family: Arial, sans-serif; 
-        font-size: 9pt; 
+        font-size: {{#if is_landscape}}11pt{{else}}9pt{{/if}}; 
         color: #333; 
         padding: 0;
         line-height: 1.3;
     }
     
     .page-content {
+        position: relative;
+        min-height: {{#if is_landscape}}200mm{{else}}287mm{{/if}};
+        padding: 5mm;
+        padding-bottom: 15mm;
     }
     
     .letterhead {
@@ -87,7 +85,7 @@
         margin-bottom: 2mm;
     }
     
-    table { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 3mm; }
+    table { width: 100%; border-collapse: collapse; font-size: {{#if is_landscape}}10pt{{else}}8pt{{/if}}; margin-bottom: 3mm; }
     
     th {
         background: #3c4248;
@@ -123,7 +121,14 @@
         text-align: right;
     }
     
-    .page-info { text-align: right; font-size: 8pt; color: #666; margin-top: 3mm; }
+    .page-info { 
+        position: absolute;
+        bottom: 5mm;
+        right: 5mm;
+        text-align: right; 
+        font-size: 8pt; 
+        color: #666;
+    }
     
     .customer-row { background-color: #e8f4fc; }
     .customer-row td { font-weight: bold; border-bottom: 2px solid #666; }

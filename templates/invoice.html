@@ -15,27 +15,28 @@
         width: 100%;
     }
     
-    /* Landscape mode adjustments */
-    {{#if is_landscape}}
-    html, body {
-        width: 100%;
-    }
-    {{/if}}
-    
     body { 
         font-family: Arial, sans-serif; 
-        font-size: 9pt; 
         color: #333; 
         padding: 0;
         line-height: 1.3;
     }
+    body.portrait {
+        font-size: 9pt;
+    }
+    body.landscape {
+        font-size: 14pt;
+    }
     
     .page-content {
+        position: relative;
+        min-height: {{#if is_landscape}}200mm{{else}}287mm{{/if}};
+        padding: 5mm;
     }
     
     .letterhead {
         width: 100%;
-        margin-bottom: 8mm;
+        margin-bottom: 1mm;
         border-collapse: collapse;
     }
     .letterhead-left {
@@ -51,61 +52,76 @@
         width: 30%;
         vertical-align: top;
     }
-    .outlet-name { font-size: 14pt; font-weight: bold; }
-    .outlet-name2 { font-size: 11pt; }
-    .outlet-address { font-size: 9pt; margin-top: 2mm; white-space: pre-line; }
-    .outlet-reg { font-size: 8pt; color: #666; }
+    .letterhead-qr {
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        width: 30%;
+        vertical-align: middle;
+        text-align: center;
+    }
+    .outlet-name { font-size: {{#if is_landscape}}20pt{{else}}18pt{{/if}}; font-weight: bold; }
+    .outlet-name2 { font-size: {{#if is_landscape}}16pt{{else}}14pt{{/if}}; }
+    .outlet-address { font-size: {{#if is_landscape}}9pt{{else}}7pt{{/if}}; margin-top: 0; white-space: pre-line; }
+    .outlet-reg { font-size: {{#if is_landscape}}12pt{{else}}8pt{{/if}}; color: #666; }
     
     .qr-code { margin-left: 4mm; }
-    .qr-code img { width: 20mm; height: 20mm; }
+    .qr-code img { width: 100%; height: auto; }
     
     .header-section {
         width: 100%;
+        margin-top: 2mm;
         margin-bottom: 5mm;
         border-collapse: collapse;
         border-spacing: 3mm;
     }
     
     .party-box {
+        margin-top: 1mm;
         width: 50%;
         padding: 3mm;
         border: 1px solid #ddd;
         vertical-align: top;
     }
-    .party-label { font-size: 8pt; font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding: 1mm; background: #f5f5f5; margin: -3mm -3mm 2mm -3mm; }
+    .party-label { font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}}; font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding: 1mm; background: #f5f5f5; margin: -3mm -3mm 2mm -3mm; }
 
-    .party-name { font-size: 9pt;font-weight: bold; }
-    .party-address { font-size: 8pt; white-space: pre-line; }
-    .party-id { font-size: 8pt; margin-top: 1mm; }
+    .party-name { font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}};font-weight: bold; }
+    .party-address { font-size: {{#if is_landscape}}10pt{{else}}8pt{{/if}}; white-space: pre-line; }
+    .party-id { font-size: {{#if is_landscape}}10pt{{else}}8pt{{/if}}; margin-top: 1mm; }
     
     .doc-info-box {
         text-align: right;
         padding: 3mm;
         min-width: 50mm;
     }
-    .doc-type { font-size: 14pt; font-weight: bold; color: #333; }
-    .doc-info-content { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+    .doc-type { font-size: {{#if is_landscape}}20pt{{else}}18pt{{/if}}; font-weight: bold; color: #333; }
+    .doc-info-content { width: 100%; border-collapse: collapse; margin-top: auto; }
     .doc-info-content td { border: none; padding: 0; vertical-align: top; }
-    .doc-details { font-size: 9pt; text-align: right; }
-    .doc-details div { margin: 1mm 0; }
-    .doc-details .amt { font-weight: bold;}
+    .doc-details { font-size: {{#if is_landscape}}11pt{{else}}9pt{{/if}}; text-align: right; line-height: 1; }
+    .doc-details div { margin: 0; }
+    .doc-details table td.left-col-amt { padding:0 0.5em 0 0; text-align:left; border:none; font-weight: bold; }
+    .doc-details table { width:100%; border:none; border-collapse:collapse; font-size: {{#if is_landscape}}11pt{{else}}9pt{{/if}}; }
+    .doc-details table td { font-size: {{#if is_landscape}}11pt{{else}}9pt{{/if}}; }
+    .doc-details table td.left-col { padding:0 0.5em 0 0; text-align:left; border:none; }
+    .doc-details table td.right-col { padding:0; text-align:right; border:none; }
+    .doc-details table td.right-col-amt { padding:0; text-align:right; border:none; font-weight: bold; }
     
-    .qr-code { padding-left: 3mm; vertical-align: middle; text-align: center; }
-    .qr-code img { width: 20mm; height: 20mm; }
+    .qr-code { padding: 3mm; vertical-align: middle; text-align: center; }
+    .qr-code img { width: 100%; height: auto; }
     .qr-label { font-size: 6pt; color: #666; margin-top: 0; }
     
     .items-section { 
         margin: 5mm 0;
     }
-    .items-label { font-size: 9pt; margin-bottom: 2mm; }
+    .items-label { font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}}; margin-bottom: 2mm; }
     
     .items-table { 
         width: 100%; 
         border-collapse: collapse; 
-        font-size: 8pt; 
+        font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}};
     }
     
     .items-table th {
+        font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}};
         background: #3c4248;
         color: white;
         padding: 2mm 1.5mm;
@@ -133,7 +149,8 @@
     .items-table .total-row { font-weight: bold; background: #f0f0f0 !important; }
     .items-table .total-row td { border-top: 2px solid #333; }
     
-    table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+    table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    .landscape table { font-size: 14pt; }
     
     th {
         background: #3c4248;
@@ -173,19 +190,38 @@
     }
     .footer-table.signatures td {
         width: 33.33%;
+        height: 25mm;
+        position: relative;
+    }
+    .footer-table.footer-landscape td {
+        width: 20%;
+        height: 20mm;
+    }
+    .footer-table.footer-landscape td.sig {
+        position: relative;
     }
     .footer-label { font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding: 1mm; background: #f5f5f5; margin: -2mm -2mm 2mm -2mm; }
     .footer-content { font-style: italic; font-size: 7pt; }
     
     .signature-line {
+        position: absolute;
+        bottom: 2mm;
+        left: 2mm;
+        right: 2mm;
         border-top: 1px solid #333;
-        margin-top: 12mm;
         padding-top: 2mm;
         text-align: center;
         font-size: 7pt;
     }
     
-    .page-info { text-align: right; font-size: 4pt; font-style: italic; color: #666; margin-top: 3mm; }
+    .page-info { 
+        margin-top: auto;
+        margin-bottom: 0;
+        text-align: right;
+        font-size: 4pt;
+        font-style: italic;
+        color: #666;
+    }
     
     /* Print styles */
     @media print {
@@ -195,16 +231,17 @@
     }
 </style>
 </head>
-<body>
+<body class="{{#if is_landscape}}landscape{{else}}portrait{{/if}}">
 <div class="page-content">
     <table class="letterhead">
         <tr>
             <td class="letterhead-left">
-                <div class="outlet-name">{{outlet_name}}</div>
+                <div class="outlet-name">
+                    {{outlet_name}}
+                    {{#if outlet_reg_no}}<span class="outlet-reg" margin-left:1em;">({{outlet_reg_no}})</span>{{/if}}
+                </div>
                 {{#if outlet_name2}}<div class="outlet-name2">{{outlet_name2}}</div>{{/if}}
                 <div class="outlet-address">{{outlet_address}}</div>
-                {{#if outlet_reg_no}}<div class="outlet-reg">Reg No: {{outlet_reg_no}}</div>{{/if}}
-                {{#if outlet_gst_reg_no}}<div class="outlet-reg">GST No: {{outlet_gst_reg_no}}</div>{{/if}}
             </td>
             <td class="letterhead-right">
                 <div class="doc-info-box">
@@ -212,23 +249,30 @@
                     <table class="doc-info-content">
                         <tr>
                             <td class="doc-details">
-                                <div>{{transaction_date}}</div>
-                                <div>{{ref_title}} {{ref_no}}</div>
-                                {{#if is_purchase_order}}<div>Our Ref: {{id}}</div>{{/if}}
-                                <div>Page: {{page_no}} of {{total_pages}}</div>
-                                <div>Term: {{term}}</div>
-                                <div class="amt">TOTAL: {{total_amount}}</div>
+                                <table>
+                                    <tr><td class="left-col">Date</td><td class="right-col">{{transaction_date}}</td></tr>
+                                    <tr><td class="left-col">{{ref_title}}</td><td class="right-col">{{ref_no}}</td></tr>
+                                    {{#if is_purchase_order}}<tr><td class="left-col">Our Ref</td><td class="right-col">{{id}}</td></tr>{{/if}}
+                                    <tr><td class="left-col">Page</td><td class="right-col">{{page_no}} of {{total_pages}}</td></tr>
+                                    <tr><td class="left-col">Term</td><td class="right-col">{{term}}</td></tr>
+                                    <tr><td class="left-col-amt">TOTAL</td><td class="right-col-amt">{{total_amount}}</td></tr>
+                                </table>
                             </td>
-                            {{#if has_e_invoice}}
-                            <td class="qr-code">
-                                <img src="{{{e_invoice_png}}}" alt="e-Invoice QR" />
-                                <div class="qr-label">e-Invoice QR</div>
-                            </td>
-                            {{/if}}
                         </tr>
                     </table>
                 </div>
             </td>
+            {{#if has_e_invoice}}
+            <td class="letterhead-qr">
+                <div class="doc-info-box">
+                    <div class="qr-code">
+                        <div class="qr-label">e-Invoice QR</div>
+                        <img src="{{{e_invoice_png}}}" alt="e-Invoice QR" />
+                    </div>
+                </div>
+            </td>
+            {{/if}}
+
         </tr>
     </table>
 
@@ -315,18 +359,56 @@
     </div>
 
     {{#if is_last_page}}
-    <table class="footer-table">
+    {{#if is_landscape}}
+    <table class="footer-table footer-landscape">
         <tr>
             <td>
                 <div class="footer-label">Notes</div>
                 <div class="footer-content">
-                    {{#each notes}}<div>{{text}}</div>{{/each}}
+                    <ul style="margin:0 0 0 1.2em; padding:0;">
+                        {{#each notes}}<li>{{text}}</li>{{/each}}
+                    </ul>
                 </div>
             </td>
             <td>
                 <div class="footer-label">Remark</div>
                 <div class="footer-content">
-                    {{#each remarks}}<div>{{text}}</div>{{/each}}
+                    <ul style="margin:0 0 0 1.2em; padding:0;">
+                        {{#each remarks}}<li>{{text}}</li>{{/each}}
+                    </ul>
+                </div>
+            </td>
+            <td class="sig">
+                <div class="footer-label">Prepared By</div>
+                <div class="signature-line"></div>
+            </td>
+            <td class="sig">
+                <div class="footer-label">Checked By</div>
+                <div class="signature-line"></div>
+            </td>
+            <td class="sig">
+                <div class="footer-label">Received in good order</div>
+                <div class="signature-line"></div>
+            </td>
+        </tr>
+    </table>
+    {{else}}
+    <table class="footer-table">
+        <tr>
+            <td>
+                <div class="footer-label">Notes</div>
+                <div class="footer-content">
+                    <ul style="margin:0 0 0 1.2em; padding:0;">
+                        {{#each notes}}<li>{{text}}</li>{{/each}}
+                    </ul>
+                </div>
+            </td>
+            <td>
+                <div class="footer-label">Remark</div>
+                <div class="footer-content">
+                    <ul style="margin:0 0 0 1.2em; padding:0;">
+                        {{#each remarks}}<li>{{text}}</li>{{/each}}
+                    </ul>
                 </div>
             </td>
         </tr>
@@ -347,6 +429,7 @@
             </td>
         </tr>
     </table>
+    {{/if}}
     {{/if}}
 
     <div class="page-info">Generated by PharmaPOS</div>

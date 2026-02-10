@@ -17,13 +17,17 @@
     
     body { 
         font-family: Arial, sans-serif; 
-        font-size: 9pt; 
+        font-size: {{#if is_landscape}}11pt{{else}}9pt{{/if}}; 
         color: #333; 
         padding: 0;
         line-height: 1.3;
     }
     
     .page-content {
+        position: relative;
+        min-height: {{#if is_landscape}}200mm{{else}}287mm{{/if}};
+        padding: 5mm;
+        padding-bottom: 15mm;
     }
     
     .letterhead {
@@ -44,10 +48,10 @@
         width: 30%;
         vertical-align: top;
     }
-    .outlet-name { font-size: 14pt; font-weight: bold; }
-    .outlet-name2 { font-size: 11pt; }
-    .outlet-address { font-size: 9pt; margin-top: 2mm; white-space: pre-line; }
-    .outlet-reg { font-size: 8pt; color: #666; }
+    .outlet-name { font-size: {{#if is_landscape}}20pt{{else}}18pt{{/if}}; font-weight: bold; }
+    .outlet-name2 { font-size: {{#if is_landscape}}16pt{{else}}14pt{{/if}}; }
+    .outlet-address { font-size: {{#if is_landscape}}9pt{{else}}7pt{{/if}}; margin-top: 2mm; white-space: pre-line; }
+    .outlet-reg { font-size: {{#if is_landscape}}12pt{{else}}8pt{{/if}}; color: #666; }
     
     .header-section {
         width: 100%;
@@ -61,37 +65,65 @@
         border: 1px solid #ddd;
         vertical-align: top;
     }
-    .party-label { font-size: 8pt; font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding: 1mm; background: #f5f5f5; margin: -3mm -3mm 2mm -3mm; }
+    .party-label { font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}}; font-weight: bold; margin-bottom: 2mm; border-bottom: 1px solid #ddd; padding: 1mm; background: #f5f5f5; margin: -3mm -3mm 2mm -3mm; }
 
-    .party-name { font-size: 9pt; font-weight: bold; }
-    .party-address { font-size: 8pt; white-space: pre-line; }
-    .party-id { font-size: 8pt; margin-top: 1mm; }
+    .party-name { font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}}; font-weight: bold; }
+    .party-address { font-size: {{#if is_landscape}}10pt{{else}}8pt{{/if}}; white-space: pre-line; }
+    .party-id { font-size: {{#if is_landscape}}10pt{{else}}8pt{{/if}}; margin-top: 1mm; }
     
     .doc-info-box {
         text-align: right;
         padding: 3mm;
         min-width: 50mm;
     }
-    .doc-type { font-size: 14pt; font-weight: bold; color: #333; }
+    .doc-type { font-size: {{#if is_landscape}}20pt{{else}}18pt{{/if}}; font-weight: bold; color: #333; }
     .doc-info-content { width: 100%; border-collapse: collapse; margin-top: 2mm; }
     .doc-info-content td { border: none; padding: 0; vertical-align: top; }
-    .doc-details { font-size: 9pt; text-align: right; }
+    .doc-details { font-size: {{#if is_landscape}}11pt{{else}}9pt{{/if}}; text-align: right; }
     .doc-details div { margin: 1mm 0; }
     
     .items-section { 
         margin: 5mm 0;
     }
-    .items-label { font-size: 9pt; margin-bottom: 2mm; }
-    
-    table { width: 100%; border-collapse: collapse; font-size: 8pt; }
-    
-    th {
+    .items-label { font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}}; margin-bottom: 2mm; }
+
+    .items-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}};
+    }
+
+    .items-table th {
+        font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}};
         background: #3c4248;
         color: white;
         padding: 2mm 1.5mm;
         text-align: left;
         border: 1px solid #555;
+        white-space: nowrap;
     }
+
+    .items-table th.amt { text-align: right; }
+    .items-table th.ctr { text-align: center; }
+    /* Name column expands to fill remaining space */
+    .items-table th.col-name { width: 100%; }
+    
+    .items-table td {
+        font-size: {{#if is_landscape}}12pt{{else}}9pt{{/if}};
+        padding: 1.5mm 1.5mm;
+        border: 1px solid #ddd;
+        vertical-align: top;
+        white-space: nowrap;
+    }
+    .items-table td.amt { text-align: right; }
+    .items-table td.ctr { text-align: center; }
+    .items-table td.wrap { white-space: normal; word-wrap: break-word; }
+    
+    .items-table tr:nth-child(even) { background: #f9f9f9; }
+    
+    .items-table .total-row { font-weight: bold; background: #f0f0f0 !important; }
+    .items-table .total-row td { border-top: 2px solid #333; }
+    
     th.amt { text-align: right; }
     th.ctr { text-align: center; }
     
@@ -122,15 +154,38 @@
     .footer-content { font-style: italic; font-size: 7pt; }
     .footer-content div { margin: 1mm 0; }
     
+    td.sig {
+        position: relative;
+        height: 30mm;
+    }
     .signature-line {
+        position: absolute;
+        bottom: 2mm;
+        left: 2mm;
+        right: 2mm;
         border-top: 1px solid #333;
-        margin-top: 12mm;
         padding-top: 2mm;
         text-align: center;
         font-size: 7pt;
     }
+    .signature-line-flow {
+        margin-top: 5mm;
+        border-top: 1px solid #333;
+        padding-top: 2mm;
+        text-align: center;
+        font-size: 7pt;
+    }
+
     
-    .page-info { text-align: right; font-size: 4pt; font-style: italic; color: #666; margin-top: 3mm; }
+    .page-info { 
+        position: absolute;
+        bottom: 5mm;
+        right: 5mm;
+        text-align: right; 
+        font-size: 4pt; 
+        font-style: italic; 
+        color: #666;
+    }
     
     /* Print styles */
     @media print {
@@ -183,7 +238,7 @@
     <div class="items-section">
         <div class="items-label">Items:</div>
         
-        <table>
+        <table class="items-table">
             <thead>
                 <tr>
                     <th class="ctr">#</th>
@@ -215,7 +270,7 @@
 
     <table class="footer-table">
         <tr>
-            <td>
+            <td class="sig">
                 <div class="footer-label">Received by</div>
                 <div class="footer-content">
                     <div>Purpose for which required: {{purpose_of_sale}}</div>
@@ -228,7 +283,7 @@
                 <div class="footer-content">
                     {{#each supplier_notes}}<div>{{text}}</div>{{/each}}
                 </div>
-                <div class="signature-line">Authorized for {{outlet_name}}</div>
+                <div class="signature-line-flow">Authorized for {{outlet_name}}</div>
             </td>
         </tr>
     </table>

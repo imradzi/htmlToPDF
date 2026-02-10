@@ -179,13 +179,11 @@
                     {{#if show_batch_expiry}}<th>BATCH</th><th>EXPIRY</th>{{/if}}
                     <th class="amt">QTY</th>
                     <th class="amt">BONUS</th>
-                    {{#if show_gst}}
                     <th class="amt">PRICE</th>
                     <th class="amt">NETT</th>
                     {{#if show_srp}}<th class="amt">SELL</th><th class="amt">MARGIN</th>{{/if}}
-                    <th class="amt">GST</th>
+                    {{#if show_gst}}<th class="amt">GST</th>{{/if}}
                     <th class="amt">AMOUNT</th>
-                    {{/if}}
                 </tr>
             </thead>
             <tbody>
@@ -198,16 +196,14 @@
                     {{#if show_batch_expiry}}<td>{{batch_no}}</td><td>{{expiry_date}}</td>{{/if}}
                     <td class="amt">{{quantity}}</td>
                     <td class="amt">{{bonus}}</td>
-                    {{#if show_gst}}
                     <td class="amt">{{price}}</td>
                     <td class="amt">{{net_price}}</td>
                     {{#if show_srp}}<td class="amt">{{selling_price}}</td><td class="amt">{{margin}}</td>{{/if}}
-                    <td class="amt">{{gst}}</td>
+                    {{#if show_gst}}<td class="amt">{{gst}}</td>{{/if}}
                     <td class="amt">{{amount}}</td>
-                    {{/if}}
                 </tr>
                 {{/each}}
-                {{#if show_gst}}
+                
                 <tr class="total-row">
                     <td></td>
                     {{#if show_code}}<td></td>{{/if}}
@@ -219,10 +215,10 @@
                     <td></td>
                     <td class="amt">TOTAL</td>
                     {{#if show_srp}}<td></td><td></td>{{/if}}
-                    <td class="amt">{{total_gst}}</td>
+                    {{#if show_gst}}<td class="amt">{{total_gst}}</td>{{/if}}
                     <td class="amt">{{total_amount}}</td>
                 </tr>
-                {{/if}}
+                
             </tbody>
         </table>
     </div>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    @page {
+        size: {{page_size}};
+        margin: 10mm 10mm 15mm 10mm;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: Arial, sans-serif;
+        font-size: {{font_size}}pt;
+        color: #333;
+        padding: 0;
+        margin: 0;
+    }
+    .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 2px;
+    }
+    .report-title { font-size: 10pt; font-weight: normal; }
+    .report-subtitle { font-size: 10pt; font-weight: normal; }
+    .report-date { font-size: 10pt; text-align: right; }
+    .report-page { font-size: 10pt; text-align: right; }
+    .page-title {
+        font-size: 8pt;
+        margin-bottom: 4px;
+        border-bottom: 1px solid #333;
+        padding-bottom: 2px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    th {
+        background: {{header_fill_color}};
+        color: #333;
+        font-size: {{label_font_size}}pt;
+        font-weight: bold;
+        text-align: left;
+        padding: 2px 3px;
+        border: 1px solid {{box_color}};
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    td {
+        padding: 1px 3px;
+        border: 1px solid {{box_color}};
+        font-size: {{data_font_size}}pt;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .text-right { text-align: right; }
+    .text-left { text-align: left; }
+    .text-center { text-align: center; }
+    .footer-row td {
+        font-weight: bold;
+        font-size: {{total_font_size}}pt;
+        border-top: 2px solid {{box_color}};
+        border-bottom: 2px solid {{box_color}};
+    }
+    .grand-total-row td {
+        font-weight: bold;
+        font-size: {{total_font_size}}pt;
+        border-top: 2px solid #333;
+        border-bottom: 2px solid #333;
+    }
+    .page-footer {
+        font-size: {{footer_font_size}}pt;
+        color: #666;
+        margin-top: 4px;
+    }
+    .page-footer-left { float: left; }
+    .page-footer-right { float: right; }
+    .section-break { page-break-before: always; }
+    {{#if custom_css}}
+    {{{custom_css}}}
+    {{/if}}
+</style>
+</head>
+<body>
+{{#each sections}}
+<div class="{{section_class}}">
+    <div class="header-row">
+        <span class="report-title">{{title}}</span>
+        <span class="report-date">{{date}}</span>
+    </div>
+    <div class="header-row">
+        <span class="report-subtitle">{{subtitle}}</span>
+        <span class="report-page">Page: {{page_no}}</span>
+    </div>
+    {{#if page_title}}
+    <div class="page-title">{{page_title}}</div>
+    {{/if}}
+
+    <table>
+        <thead>
+            <tr>
+                {{#each columns}}
+                <th style="width:{{width}}%" class="{{align_class}}">{{name}}</th>
+                {{/each}}
+            </tr>
+        </thead>
+        <tbody>
+            {{#each rows}}
+            <tr>
+                {{#each cells}}
+                <td class="{{align_class}}">{{value}}</td>
+                {{/each}}
+            </tr>
+            {{/each}}
+            {{#if has_page_total}}
+            <tr class="footer-row">
+                {{#each page_total_cells}}
+                <td class="{{align_class}}">{{value}}</td>
+                {{/each}}
+            </tr>
+            {{/if}}
+        </tbody>
+    </table>
+
+    {{#if has_grand_total}}
+    <table>
+        <tr class="grand-total-row">
+            {{#each grand_total_cells}}
+            <td style="width:{{width}}%" class="{{align_class}}">{{value}}</td>
+            {{/each}}
+        </tr>
+    </table>
+    {{/if}}
+
+    <div class="page-footer">
+        <span class="page-footer-left">{{outlet_name}}</span>
+        {{#if show_page_no}}
+        <span class="page-footer-right">Page {{page_no}}</span>
+        {{/if}}
+    </div>
+</div>
+{{/each}}
+
+{{#if no_data}}
+<div style="text-align:center; margin-top: 40mm;">
+    <p style="font-size: 12pt;">No Data for:</p>
+    <p style="font-size: 12pt; margin-top: 10mm;">{{no_data_text}}</p>
+</div>
+{{/if}}
+</body>
+</html>

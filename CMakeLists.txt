@@ -93,6 +93,7 @@ add_custom_target(generate_templates
 add_library(htmlToPDF STATIC
     src/template_engine.cpp
     src/pdf_generator.cpp
+    src/html_report_builder.cpp
     src/sales_summary_builder.cpp
     src/purchase_summary_builder.cpp
     src/invoice_builder.cpp

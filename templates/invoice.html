@@ -307,15 +307,18 @@
                     <th class="col-name">NAME</th>
                     <th>PACK</th>
                     {{#if show_batch_expiry}}<th>BATCH</th><th>EXPIRY</th>{{/if}}
-                    <th class="amt">QTY</th>
-                    {{#if show_bonus}}<th class="amt">BONUS</th>{{/if}}
-                    
-                    <th class="amt">PRICE</th>
-                    {{#if show_srp}}<th class="amt">SRP</th>{{/if}}
-                    {{#if show_discount}}<th class="amt">DISC</th>{{/if}}
-                    {{#if show_gst}}<th class="amt">GST</th>{{/if}}
-                    <th class="amt">AMOUNT</th>
-                    
+                    {{#if show_minimal}}
+                        <th class="amt">QTY</th>
+                        {{#if show_bonus}}<th class="amt">BONUS</th>{{/if}}
+                    {{else}}
+                        <th class="amt">QTY</th>
+                        {{#if show_bonus}}<th class="amt">BONUS</th>{{/if}}
+                        <th class="amt">PRICE</th>
+                        {{#if show_srp}}<th class="amt">SRP</th>{{/if}}
+                        {{#if show_discount}}<th class="amt">DISC</th>{{/if}}
+                        {{#if show_gst}}<th class="amt">GST</th>{{/if}}
+                        <th class="amt">AMOUNT</th>
+                    {{/if}}
                 </tr>
             </thead>
             <tbody>
@@ -327,14 +330,19 @@
                     <td class="wrap">{{name}}</td>
                     <td>{{packing}}</td>
                     {{#if show_batch_expiry}}<td>{{batch_no}}</td><td>{{expiry_date}}</td>{{/if}}
-                    <td class="amt">{{quantity}}</td>
-                    {{#if show_bonus}}<td class="amt">{{bonus}}</td>{{/if}}
-                    
-                    <td class="amt">{{price}}</td>
-                    {{#if show_srp}}<td class="amt">{{selling_price}}</td>{{/if}}
-                    {{#if show_discount}}<td class="amt">{{discount}}</td>{{/if}}
-                    {{#if show_gst}}<td class="amt">{{gst}}</td>{{/if}}
-                    <td class="amt">{{amount}}</td>
+
+                    {{#if show_minimal}}
+                        <td class="amt">{{quantity}}</td>
+                        {{#if show_bonus}}<td class="amt">{{bonus}}</td>{{/if}}
+                    {{else}}
+                        <td class="amt">{{quantity}}</td>
+                        {{#if show_bonus}}<td class="amt">{{bonus}}</td>{{/if}}
+                        <td class="amt">{{price}}</td>
+                        {{#if show_srp}}<td class="amt">{{selling_price}}</td>{{/if}}
+                        {{#if show_discount}}<td class="amt">{{discount}}</td>{{/if}}
+                        {{#if show_gst}}<td class="amt">{{gst}}</td>{{/if}}
+                        <td class="amt">{{amount}}</td>
+                    {{/if}}
                 </tr>
                 {{/each}}
                 {{#if is_last_page}}
@@ -345,13 +353,18 @@
                     <td></td>
                     <td></td>
                     {{#if show_batch_expiry}}<td></td><td></td>{{/if}}
-                    <td></td>
-                    {{#if show_bonus}}<td></td>{{/if}}
-                    <td class="amt">TOTAL</td>
-                    {{#if show_srp}}<td></td>{{/if}}
-                    {{#if show_discount}}<td class="amt">{{total_discount}}</td>{{/if}}
-                    {{#if show_gst}}<td class="amt">{{total_gst}}</td>{{/if}}
-                    <td class="amt">{{total_amount}}</td>
+                    {{#if show_minimal}}
+                        <td></td>
+                        {{#if show_bonus}}<td></td>{{/if}}
+                    {{else}}
+                        <td></td>
+                        {{#if show_bonus}}<td></td>{{/if}}
+                        <td class="amt">TOTAL</td>
+                        {{#if show_srp}}<td></td>{{/if}}
+                        {{#if show_discount}}<td class="amt">{{total_discount}}</td>{{/if}}
+                        {{#if show_gst}}<td class="amt">{{total_gst}}</td>{{/if}}
+                        <td class="amt">{{total_amount}}</td>
+                    {{/if}}
                 </tr>
                 {{/if}}
             </tbody>

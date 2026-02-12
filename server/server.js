@@ -550,6 +550,134 @@ const mockPurchaseSummaryData = {
   total_supplier_amount: '54,000.00'
 };
 
+// Mock data for tabular report template
+const mockTabularReportData = {
+  // Page setup
+  page_size: 'A4 portrait',
+  font_size: '8',
+  label_font_size: '7',
+  data_font_size: '7',
+  total_font_size: '7',
+  footer_font_size: '6',
+
+  // Colors
+  header_fill_color: '#e8e8e8',
+  box_color: '#ccc',
+
+  // Sections (each section = one page)
+  sections: [
+    {
+      section_class: '',
+      title: 'Stock Movement Report',
+      subtitle: 'PharmaPOS Main Branch',
+      date: '28/01/2026',
+      page_no: '1',
+      page_title: 'Category: Medicines',
+      outlet_name: 'PharmaPOS Main Branch',
+      show_page_no: true,
+      columns: [
+        { name: '#',          width: '4',  align_class: 'text-center' },
+        { name: 'Code',       width: '10', align_class: 'text-left' },
+        { name: 'Product Name', width: '26', align_class: 'text-left' },
+        { name: 'Packing',    width: '8',  align_class: 'text-left' },
+        { name: 'Open Bal',   width: '8',  align_class: 'text-right' },
+        { name: 'Purch',      width: '8',  align_class: 'text-right' },
+        { name: 'Sales',      width: '8',  align_class: 'text-right' },
+        { name: 'Adj',        width: '8',  align_class: 'text-right' },
+        { name: 'Close Bal',  width: '8',  align_class: 'text-right' },
+        { name: 'Value (RM)', width: '12', align_class: 'text-right' }
+      ],
+      rows: [
+        { cells: [{ value: '1', align_class: 'text-center' }, { value: 'MED-001', align_class: 'text-left' }, { value: 'Paracetamol 500mg', align_class: 'text-left' }, { value: '100s', align_class: 'text-left' }, { value: '500', align_class: 'text-right' }, { value: '200', align_class: 'text-right' }, { value: '150', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '550', align_class: 'text-right' }, { value: '6,600.00', align_class: 'text-right' }] },
+        { cells: [{ value: '2', align_class: 'text-center' }, { value: 'MED-002', align_class: 'text-left' }, { value: 'Ibuprofen 400mg', align_class: 'text-left' }, { value: '100s', align_class: 'text-left' }, { value: '300', align_class: 'text-right' }, { value: '100', align_class: 'text-right' }, { value: '80', align_class: 'text-right' }, { value: '-5', align_class: 'text-right' }, { value: '315', align_class: 'text-right' }, { value: '4,725.00', align_class: 'text-right' }] },
+        { cells: [{ value: '3', align_class: 'text-center' }, { value: 'MED-003', align_class: 'text-left' }, { value: 'Amoxicillin 250mg', align_class: 'text-left' }, { value: '100s', align_class: 'text-left' }, { value: '200', align_class: 'text-right' }, { value: '150', align_class: 'text-right' }, { value: '120', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '230', align_class: 'text-right' }, { value: '4,140.00', align_class: 'text-right' }] },
+        { cells: [{ value: '4', align_class: 'text-center' }, { value: 'MED-004', align_class: 'text-left' }, { value: 'Metformin 500mg', align_class: 'text-left' }, { value: '60s', align_class: 'text-left' }, { value: '400', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '95', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '305', align_class: 'text-right' }, { value: '3,050.00', align_class: 'text-right' }] },
+        { cells: [{ value: '5', align_class: 'text-center' }, { value: 'MED-005', align_class: 'text-left' }, { value: 'Omeprazole 20mg', align_class: 'text-left' }, { value: '30s', align_class: 'text-left' }, { value: '250', align_class: 'text-right' }, { value: '100', align_class: 'text-right' }, { value: '60', align_class: 'text-right' }, { value: '10', align_class: 'text-right' }, { value: '300', align_class: 'text-right' }, { value: '5,400.00', align_class: 'text-right' }] },
+        { cells: [{ value: '6', align_class: 'text-center' }, { value: 'MED-006', align_class: 'text-left' }, { value: 'Cetirizine 10mg', align_class: 'text-left' }, { value: '100s', align_class: 'text-left' }, { value: '180', align_class: 'text-right' }, { value: '50', align_class: 'text-right' }, { value: '45', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '185', align_class: 'text-right' }, { value: '1,480.00', align_class: 'text-right' }] },
+        { cells: [{ value: '7', align_class: 'text-center' }, { value: 'MED-007', align_class: 'text-left' }, { value: 'Amlodipine 5mg', align_class: 'text-left' }, { value: '30s', align_class: 'text-left' }, { value: '320', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '75', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '245', align_class: 'text-right' }, { value: '2,695.00', align_class: 'text-right' }] },
+        { cells: [{ value: '8', align_class: 'text-center' }, { value: 'MED-008', align_class: 'text-left' }, { value: 'Losartan 50mg', align_class: 'text-left' }, { value: '30s', align_class: 'text-left' }, { value: '150', align_class: 'text-right' }, { value: '200', align_class: 'text-right' }, { value: '110', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '240', align_class: 'text-right' }, { value: '3,360.00', align_class: 'text-right' }] },
+        { cells: [{ value: '9', align_class: 'text-center' }, { value: 'MED-009', align_class: 'text-left' }, { value: 'Atorvastatin 20mg', align_class: 'text-left' }, { value: '30s', align_class: 'text-left' }, { value: '280', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '65', align_class: 'text-right' }, { value: '-3', align_class: 'text-right' }, { value: '212', align_class: 'text-right' }, { value: '2,968.00', align_class: 'text-right' }] },
+        { cells: [{ value: '10', align_class: 'text-center' }, { value: 'MED-010', align_class: 'text-left' }, { value: 'Simvastatin 40mg', align_class: 'text-left' }, { value: '30s', align_class: 'text-left' }, { value: '100', align_class: 'text-right' }, { value: '50', align_class: 'text-right' }, { value: '35', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '115', align_class: 'text-right' }, { value: '1,380.00', align_class: 'text-right' }] },
+        { cells: [{ value: '11', align_class: 'text-center' }, { value: 'MED-011', align_class: 'text-left' }, { value: 'Aspirin 100mg', align_class: 'text-left' }, { value: '100s', align_class: 'text-left' }, { value: '600', align_class: 'text-right' }, { value: '300', align_class: 'text-right' }, { value: '200', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '700', align_class: 'text-right' }, { value: '3,500.00', align_class: 'text-right' }] },
+        { cells: [{ value: '12', align_class: 'text-center' }, { value: 'MED-012', align_class: 'text-left' }, { value: 'Clopidogrel 75mg', align_class: 'text-left' }, { value: '30s', align_class: 'text-left' }, { value: '90', align_class: 'text-right' }, { value: '60', align_class: 'text-right' }, { value: '40', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '110', align_class: 'text-right' }, { value: '2,200.00', align_class: 'text-right' }] }
+      ],
+      has_page_total: true,
+      page_total_cells: [
+        { value: '', align_class: 'text-center' },
+        { value: '', align_class: 'text-left' },
+        { value: 'Page Total:', align_class: 'text-right' },
+        { value: '', align_class: 'text-left' },
+        { value: '3,370', align_class: 'text-right' },
+        { value: '1,210', align_class: 'text-right' },
+        { value: '1,075', align_class: 'text-right' },
+        { value: '2', align_class: 'text-right' },
+        { value: '3,507', align_class: 'text-right' },
+        { value: '41,498.00', align_class: 'text-right' }
+      ],
+      has_grand_total: false
+    },
+    {
+      section_class: 'section-break',
+      title: 'Stock Movement Report',
+      subtitle: 'PharmaPOS Main Branch',
+      date: '28/01/2026',
+      page_no: '2',
+      page_title: 'Category: Supplements',
+      outlet_name: 'PharmaPOS Main Branch',
+      show_page_no: true,
+      columns: [
+        { name: '#',          width: '4',  align_class: 'text-center' },
+        { name: 'Code',       width: '10', align_class: 'text-left' },
+        { name: 'Product Name', width: '26', align_class: 'text-left' },
+        { name: 'Packing',    width: '8',  align_class: 'text-left' },
+        { name: 'Open Bal',   width: '8',  align_class: 'text-right' },
+        { name: 'Purch',      width: '8',  align_class: 'text-right' },
+        { name: 'Sales',      width: '8',  align_class: 'text-right' },
+        { name: 'Adj',        width: '8',  align_class: 'text-right' },
+        { name: 'Close Bal',  width: '8',  align_class: 'text-right' },
+        { name: 'Value (RM)', width: '12', align_class: 'text-right' }
+      ],
+      rows: [
+        { cells: [{ value: '1', align_class: 'text-center' }, { value: 'SUP-001', align_class: 'text-left' }, { value: 'Vitamin C 1000mg', align_class: 'text-left' }, { value: '60s', align_class: 'text-left' }, { value: '400', align_class: 'text-right' }, { value: '200', align_class: 'text-right' }, { value: '180', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '420', align_class: 'text-right' }, { value: '5,040.00', align_class: 'text-right' }] },
+        { cells: [{ value: '2', align_class: 'text-center' }, { value: 'SUP-002', align_class: 'text-left' }, { value: 'Vitamin B Complex', align_class: 'text-left' }, { value: '60s', align_class: 'text-left' }, { value: '350', align_class: 'text-right' }, { value: '100', align_class: 'text-right' }, { value: '120', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '330', align_class: 'text-right' }, { value: '2,640.00', align_class: 'text-right' }] },
+        { cells: [{ value: '3', align_class: 'text-center' }, { value: 'SUP-003', align_class: 'text-left' }, { value: 'Fish Oil Omega-3', align_class: 'text-left' }, { value: '120s', align_class: 'text-left' }, { value: '200', align_class: 'text-right' }, { value: '50', align_class: 'text-right' }, { value: '70', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '180', align_class: 'text-right' }, { value: '4,500.00', align_class: 'text-right' }] },
+        { cells: [{ value: '4', align_class: 'text-center' }, { value: 'SUP-004', align_class: 'text-left' }, { value: 'Calcium + Vitamin D', align_class: 'text-left' }, { value: '60s', align_class: 'text-left' }, { value: '150', align_class: 'text-right' }, { value: '100', align_class: 'text-right' }, { value: '55', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '195', align_class: 'text-right' }, { value: '2,925.00', align_class: 'text-right' }] },
+        { cells: [{ value: '5', align_class: 'text-center' }, { value: 'SUP-005', align_class: 'text-left' }, { value: 'Probiotics 10B CFU', align_class: 'text-left' }, { value: '30s', align_class: 'text-left' }, { value: '120', align_class: 'text-right' }, { value: '80', align_class: 'text-right' }, { value: '90', align_class: 'text-right' }, { value: '5', align_class: 'text-right' }, { value: '115', align_class: 'text-right' }, { value: '3,450.00', align_class: 'text-right' }] },
+        { cells: [{ value: '6', align_class: 'text-center' }, { value: 'SUP-006', align_class: 'text-left' }, { value: 'Iron Supplement 65mg', align_class: 'text-left' }, { value: '100s', align_class: 'text-left' }, { value: '250', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '40', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '210', align_class: 'text-right' }, { value: '1,680.00', align_class: 'text-right' }] },
+        { cells: [{ value: '7', align_class: 'text-center' }, { value: 'SUP-007', align_class: 'text-left' }, { value: 'Zinc 50mg', align_class: 'text-left' }, { value: '100s', align_class: 'text-left' }, { value: '180', align_class: 'text-right' }, { value: '150', align_class: 'text-right' }, { value: '95', align_class: 'text-right' }, { value: '0', align_class: 'text-right' }, { value: '235', align_class: 'text-right' }, { value: '1,880.00', align_class: 'text-right' }] },
+        { cells: [{ value: '8', align_class: 'text-center' }, { value: 'SUP-008', align_class: 'text-left' }, { value: 'Multivitamin Daily', align_class: 'text-left' }, { value: '90s', align_class: 'text-left' }, { value: '500', align_class: 'text-right' }, { value: '200', align_class: 'text-right' }, { value: '250', align_class: 'text-right' }, { value: '-10', align_class: 'text-right' }, { value: '440', align_class: 'text-right' }, { value: '6,160.00', align_class: 'text-right' }] }
+      ],
+      has_page_total: true,
+      page_total_cells: [
+        { value: '', align_class: 'text-center' },
+        { value: '', align_class: 'text-left' },
+        { value: 'Page Total:', align_class: 'text-right' },
+        { value: '', align_class: 'text-left' },
+        { value: '2,150', align_class: 'text-right' },
+        { value: '880', align_class: 'text-right' },
+        { value: '900', align_class: 'text-right' },
+        { value: '-5', align_class: 'text-right' },
+        { value: '2,125', align_class: 'text-right' },
+        { value: '28,275.00', align_class: 'text-right' }
+      ],
+      has_grand_total: true,
+      grand_total_cells: [
+        { value: '', width: '4',  align_class: 'text-center' },
+        { value: '', width: '10', align_class: 'text-left' },
+        { value: 'Grand Total:', width: '26', align_class: 'text-right' },
+        { value: '', width: '8',  align_class: 'text-left' },
+        { value: '5,520', width: '8',  align_class: 'text-right' },
+        { value: '2,090', width: '8',  align_class: 'text-right' },
+        { value: '1,975', width: '8',  align_class: 'text-right' },
+        { value: '-3', width: '8',  align_class: 'text-right' },
+        { value: '5,632', width: '8',  align_class: 'text-right' },
+        { value: '69,773.00', width: '12', align_class: 'text-right' }
+      ]
+    }
+  ],
+  no_data: false
+};
+
 // Routes
 app.get('/', (req, res) => {
   res.send(`
@@ -617,6 +745,11 @@ app.get('/', (req, res) => {
           <a href="/purchase-summary">Purchase Summary (Portrait)</a>
           <a href="/purchase-summary-landscape" style="margin-left: 10px; background: #27ae60;">Landscape</a>
           <span class="description">- Purchase summary by category/supplier</span>
+        </li>
+        <li>
+          <a href="/tabular-report">Tabular Report (Portrait)</a>
+          <a href="/tabular-report-landscape" style="margin-left: 10px; background: #27ae60;">Landscape</a>
+          <span class="description">- Generic tabular report (stock movement)</span>
         </li>
       </ul>
       <hr style="margin-top: 40px;">
@@ -703,6 +836,14 @@ app.get('/purchase-summary-landscape', (req, res) => {
   res.render('purchase_summary.html', { ...mockPurchaseSummaryData, orientation: 'landscape', is_landscape: true });
 });
 
+app.get('/tabular-report', (req, res) => {
+  res.render('tabular_report.html', mockTabularReportData);
+});
+
+app.get('/tabular-report-landscape', (req, res) => {
+  res.render('tabular_report.html', { ...mockTabularReportData, page_size: 'A4 landscape' });
+});
+
 // Start server
 const server = app.listen(PORT, () => {
   console.log(`\n✓ Server running at http://localhost:${PORT}`);
@@ -716,6 +857,7 @@ const server = app.listen(PORT, () => {
   console.log(`  - http://localhost:${PORT}/poison-order       (Poison Order Template)`);
   console.log(`  - http://localhost:${PORT}/purchase-order     (Purchase Order Template)`);
   console.log(`  - http://localhost:${PORT}/purchase-summary   (Purchase Summary Template)`);
+  console.log(`  - http://localhost:${PORT}/tabular-report     (Tabular Report Template)`);
   console.log(`\n✓ BrowserSync enabled - browser will auto-refresh on changes`);
 });
 

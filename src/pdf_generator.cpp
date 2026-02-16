@@ -100,7 +100,7 @@ PdfGenerateResult PdfGeneratorProxy::executeOnMainThread(const PdfGenerateReques
 
     // Wait for completion
     LOG_INFO("PdfGeneratorProxy: Waiting for PDF generation to complete");
-    completionCV.wait(lock, [&completed]() { return completed || global::g.isAppShuttingDown.load(std::memory_order_acquire); });
+    completionCV.wait(lock, [&completed]() { return completed || global::g.isAppShuttingDown.load(); });
 
     if (completed) LOG_INFO("PdfGeneratorProxy: PDF generation completed");
     else LOG_ERROR("PdfGeneratorProxy: PDF generation interrupted due to shutdown");

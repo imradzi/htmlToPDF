@@ -241,7 +241,8 @@ bool PdfGenerator::generateMultiPagePdf(const std::vector<std::string>& htmlPage
     for (const auto& html : htmlPages) {
         wkhtmltopdf_object_settings* os = wkhtmltopdf_create_object_settings();
         wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
-        wkhtmltopdf_set_object_setting(os, "footer.right", fmt::format("ver: {} Page [page] of [toPage]", GetVersionNo()).c_str());
+        wkhtmltopdf_set_object_setting(os, "footer.right", "Page [page] of [toPage]");
+        wkhtmltopdf_set_object_setting(os, "footer.left", fmt::format("ppos {}", GetVersionNo()).c_str());
         wkhtmltopdf_set_object_setting(os, "footer.fontSize", "4");
         wkhtmltopdf_add_object(converter, os, html.c_str());
     }
@@ -308,7 +309,8 @@ bool PdfGenerator::doConvert(const std::string& htmlContent, const std::string& 
     if (config_.enableLocalFileAccess) {
         wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
     }
-    wkhtmltopdf_set_object_setting(os, "footer.right", fmt::format("ver: {} Page [page] of [toPage]", GetVersionNo()).c_str());
+    wkhtmltopdf_set_object_setting(os, "footer.right", "Page [page] of [toPage]");
+    wkhtmltopdf_set_object_setting(os, "footer.left", fmt::format("ppos {}", GetVersionNo()).c_str());
     wkhtmltopdf_set_object_setting(os, "footer.fontSize", "4");
 
     wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);
@@ -378,7 +380,8 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
         return false;
     }
     wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
-    wkhtmltopdf_set_object_setting(os, "footer.right", fmt::format("ver: {} Page [page] of [toPage]", GetVersionNo()).c_str());
+    wkhtmltopdf_set_object_setting(os, "footer.right", "Page [page] of [toPage]");
+    wkhtmltopdf_set_object_setting(os, "footer.left", fmt::format("ppos {}", GetVersionNo()).c_str());
     wkhtmltopdf_set_object_setting(os, "footer.fontSize", "4");
 
     wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);

@@ -110,6 +110,9 @@ target_include_directories(htmlToPDF PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../util
 )
 
+# Ensure consistent Debug/Release settings with parent project
+target_compile_definitions(htmlToPDF PRIVATE wxDEBUG_LEVEL=0 NDEBUG)
+
 # Ensure template generation happens before compiling
 add_dependencies(htmlToPDF generate_templates)
 

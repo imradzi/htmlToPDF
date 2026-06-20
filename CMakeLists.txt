@@ -11,8 +11,10 @@ include(FetchContent)
 set(WKHTMLTOX_VERSION "0.12.6-1")
 
 if(WIN32)
-    # Use bundled wkhtmltox libraries based on target architecture
-    if(CMAKE_CL_64 STREQUAL "0")
+    # Use bundled wkhtmltox libraries based on target architecture.
+    # CMAKE_CL_64 only works for MSVC; for MinGW cross-compilation
+    # detect 32/64-bit via CMAKE_SIZEOF_VOID_P (4 = 32-bit, 8 = 64-bit).
+    if((MSVC AND CMAKE_CL_64 STREQUAL "0") OR CMAKE_SIZEOF_VOID_P EQUAL 4)
         # 32-bit build
         set(WKHTMLTOX_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lib/win32")
         message(STATUS "Using 32-bit wkhtmltox library")

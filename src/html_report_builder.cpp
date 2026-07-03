@@ -326,7 +326,7 @@ bool HtmlReportBuilder::generatePdf(const std::string& outputPath) const {
     htmlToPDF::PdfGenerator::PdfSettings settings;
     settings.orientation = isLandscape() ? "Landscape" : "Portrait";
     settings.pageSize = "A4";
-    settings.marginTop = 30;
+    settings.marginTop = 15;
     settings.marginBottom = 10;
     settings.marginLeft = 10;
     settings.marginRight = 10;

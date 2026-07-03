@@ -436,7 +436,7 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
         wkhtmltopdf_set_object_setting(os, "header.fontSize", settings.headerFontSize.c_str());
         wkhtmltopdf_set_object_setting(os, "header.fontName", "Arial");
     }
-    wkhtmltopdf_set_object_setting(os, "header.spacing", "10");
+    wkhtmltopdf_set_object_setting(os, "header.spacing", "3");
     wkhtmltopdf_set_object_setting(os, "header.line", "");
 
     wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);

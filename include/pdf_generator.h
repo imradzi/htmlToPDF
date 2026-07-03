@@ -31,6 +31,11 @@ public:
         int marginBottom = 10;
         int marginLeft = 10;
         int marginRight = 10;
+        std::string headerLeft;
+        std::string headerRight;
+        std::string headerTitle;    // appears below headerLeft on a second line
+        std::string headerSubtitle; // appears below headerTitle on a third line
+        std::string headerFontSize = "8";
     };
 
     PdfGenerator();

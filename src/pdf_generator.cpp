@@ -10,6 +10,8 @@
 #include <fstream>
 #include <sstream>
 #include <cstring>
+#include <cstdio>
+#include <unistd.h>
 #include "logging.hpp"
 #include "global.h"
 #include "fmt/format.h"
@@ -244,6 +246,16 @@ bool PdfGenerator::generateMultiPagePdf(const std::vector<std::string>& htmlPage
         wkhtmltopdf_set_object_setting(os, "footer.right", "Page [page] of [toPage]");
         wkhtmltopdf_set_object_setting(os, "footer.left", fmt::format("ppos {}", GetVersionNo()).c_str());
         wkhtmltopdf_set_object_setting(os, "footer.fontSize", "4");
+        if (!settings.headerLeft.empty()) {
+            wkhtmltopdf_set_object_setting(os, "header.left", settings.headerLeft.c_str());
+        }
+        if (!settings.headerRight.empty()) {
+            wkhtmltopdf_set_object_setting(os, "header.right", settings.headerRight.c_str());
+        }
+        wkhtmltopdf_set_object_setting(os, "header.fontSize", settings.headerFontSize.c_str());
+        wkhtmltopdf_set_object_setting(os, "header.fontName", "Arial");
+        wkhtmltopdf_set_object_setting(os, "header.spacing", "5");
+        wkhtmltopdf_set_object_setting(os, "header.line", "");
         wkhtmltopdf_add_object(converter, os, html.c_str());
     }
     
@@ -384,9 +396,53 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
     wkhtmltopdf_set_object_setting(os, "footer.left", fmt::format("ppos {}", GetVersionNo()).c_str());
     wkhtmltopdf_set_object_setting(os, "footer.fontSize", "4");
 
+    std::string headerTempPath;
+    bool useHtmlHeader = !settings.headerTitle.empty() || !settings.headerSubtitle.empty();
+    LOG_INFO("doConvertWithSettings: headerTitle='{}', headerSubtitle='{}', useHtmlHeader={}",
+             settings.headerTitle, settings.headerSubtitle, useHtmlHeader);
+    if (useHtmlHeader) {
+        // Multi-line header via temp HTML file
+        headerTempPath = fmt::format("/tmp/ppos_hdr_{}.html", getpid());
+        std::ofstream hf(headerTempPath);
+        if (hf.is_open()) {
+            hf << "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>"
+               << "*{margin:0;padding:0;box-sizing:border-box;}"
+               << "body{font-family:Arial,sans-serif;font-size:" << settings.headerFontSize << "pt;padding:2px 0 4px 0;}"
+               << ".l{float:left;}.r{float:right;white-space:nowrap;}"
+               << ".t{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 1) << "pt;margin-top:2px;}"
+               << ".s{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 2) << "pt;}"
+               << "</style></head><body>"
+               << "<div class=\"l\">" << settings.headerLeft << "</div>"
+               << "<div class=\"r\">" << settings.headerRight << "</div>";
+            if (!settings.headerTitle.empty())
+                hf << "<div class=\"t\">" << settings.headerTitle << "</div>";
+            if (!settings.headerSubtitle.empty())
+                hf << "<div class=\"s\">" << settings.headerSubtitle << "</div>";
+            hf << "</body></html>";
+            hf.close();
+            wkhtmltopdf_set_object_setting(os, "header.htmlUrl", headerTempPath.c_str());
+            LOG_INFO("Header HTML written to {}", headerTempPath);
+        } else {
+            LOG_ERROR("Failed to write header HTML to {}", headerTempPath);
+            useHtmlHeader = false;
+        }
+    }
+    if (!useHtmlHeader) {
+        // Fallback: single-line plain text header
+        if (!settings.headerLeft.empty())
+            wkhtmltopdf_set_object_setting(os, "header.left", settings.headerLeft.c_str());
+        if (!settings.headerRight.empty())
+            wkhtmltopdf_set_object_setting(os, "header.right", settings.headerRight.c_str());
+        wkhtmltopdf_set_object_setting(os, "header.fontSize", settings.headerFontSize.c_str());
+        wkhtmltopdf_set_object_setting(os, "header.fontName", "Arial");
+    }
+    wkhtmltopdf_set_object_setting(os, "header.spacing", "10");
+    wkhtmltopdf_set_object_setting(os, "header.line", "");
+
     wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);
     if (!converter) {
         LOG_ERROR("Failed to create PDF converter");
+        if (!headerTempPath.empty()) std::remove(headerTempPath.c_str());
         return false;
     }
     
@@ -396,6 +452,8 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
     wkhtmltopdf_add_object(converter, os, htmlContent.c_str());
     
     bool success = (wkhtmltopdf_convert(converter) == 1);
+    
+    if (!headerTempPath.empty()) std::remove(headerTempPath.c_str());
     
     if (!success) {
         LOG_ERROR("PDF conversion failed");

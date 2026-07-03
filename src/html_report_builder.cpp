@@ -6,7 +6,11 @@
 #include <boost/algorithm/string.hpp>
 #include <sstream>
 #include <iomanip>
+#include <chrono>
+#include <ctime>
 #include <filesystem>
+
+
 
 HtmlReportBuilder::HtmlReportBuilder(const std::string& title, const std::string& outletName, const std::string& orientation)
     : title_(title)
@@ -171,16 +175,14 @@ std::string HtmlReportBuilder::renderHtml() const {
         display: flex;
         justify-content: space-between;
         align-items: baseline;
-        margin-bottom: 2px;
+        margin-bottom: 10px;
+        margin-top: 0px;
     }
-    .report-title { font-size: 10pt; }
-    .report-subtitle { font-size: 10pt; }
-    .report-date { font-size: 10pt; text-align: right; }
-    .page-title {
+    .report-subtitle {
         font-size: 8pt;
         margin-bottom: 4px;
-        border-bottom: 1px solid #333;
         padding-bottom: 2px;
+        margin-top: 0px;
     }
     table {
         width: 100%;
@@ -215,24 +217,16 @@ std::string HtmlReportBuilder::renderHtml() const {
     .text-left { text-align: left; }
     .footer-row td {
         font-weight: bold;
-        font-size: )" << fontSize_.total << R"(pt;
+        font-size: )" << fontSize_.data << R"(pt;
         border-top: 2px solid )" << colorToHex(theme_.boxColorRed, theme_.boxColorGreen, theme_.boxColorBlue) << R"(;
         border-bottom: 2px solid )" << colorToHex(theme_.boxColorRed, theme_.boxColorGreen, theme_.boxColorBlue) << R"(;
     }
     .grand-total-row td {
         font-weight: bold;
-        font-size: )" << fontSize_.total << R"(pt;
+        font-size: )" << fontSize_.data << R"(pt;
         border-top: 2px solid #333;
         border-bottom: 2px solid #333;
     }
-    .page-footer {
-        font-size: )" << fontSize_.footer << R"(pt;
-        color: #666;
-        margin-top: 4px;
-        overflow: hidden;
-    }
-    .page-footer-left { float: left; }
-    .page-footer-right { float: right; }
     .section-break { page-break-before: always; }
 )";
 
@@ -269,15 +263,6 @@ std::string HtmlReportBuilder::renderHtml() const {
         const auto& sec = sections_[si];
         html << "<div" << (si > 0 ? " class=\"section-break\"" : "") << ">\n";
 
-        // Header
-        html << "  <div class=\"header-row\">\n";
-        html << "    <span class=\"report-title\">" << sec.title << "</span>\n";
-        html << "    <span class=\"report-date\">" << sec.subtitle << "</span>\n";
-        html << "  </div>\n";
-
-        if (!sec.pageTitle.empty()) {
-            html << "  <div class=\"page-title\">" << sec.pageTitle << "</div>\n";
-        }
 
         // Table
         html << "  <table>\n    <thead><tr>\n";
@@ -322,14 +307,6 @@ std::string HtmlReportBuilder::renderHtml() const {
             html << "  </tr></table>\n";
         }
 
-        // Footer
-        html << "  <div class=\"page-footer\">\n";
-        html << "    <span class=\"page-footer-left\">" << outletName_ << "</span>\n";
-        if (showFooterPageNo_) {
-            html << "    <span class=\"page-footer-right\">Page " << sec.pageNo << "</span>\n";
-        }
-        html << "  </div>\n";
-
         html << "</div>\n";
     }
 
@@ -340,13 +317,24 @@ std::string HtmlReportBuilder::renderHtml() const {
 bool HtmlReportBuilder::generatePdf(const std::string& outputPath) const {
     std::string htmlContent = renderHtml();
 
+    // Format current date & time for header right
+    auto now = std::chrono::system_clock::now();
+    auto t = std::chrono::system_clock::to_time_t(now);
+    std::ostringstream dateTimeStr;
+    dateTimeStr << std::put_time(std::localtime(&t), "%d-%m-%Y %H:%M");
+
     htmlToPDF::PdfGenerator::PdfSettings settings;
     settings.orientation = isLandscape() ? "Landscape" : "Portrait";
     settings.pageSize = "A4";
-    settings.marginTop = 10;
+    settings.marginTop = 30;
     settings.marginBottom = 10;
     settings.marginLeft = 10;
     settings.marginRight = 10;
+    settings.headerLeft = outletName_;
+    settings.headerRight = dateTimeStr.str();
+    settings.headerTitle = title_;
+    settings.headerSubtitle = subtitle_;
+    settings.headerFontSize = "10";
 
     htmlToPDF::PdfGeneratorProxy proxy;
     return proxy.generateFromHtml(htmlContent, outputPath, settings);

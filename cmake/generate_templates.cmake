@@ -25,6 +25,7 @@ file_to_cpp_string("${TEMPLATES_DIR}/purchase_summary.html" "PURCHASE_SUMMARY" P
 file_to_cpp_string("${TEMPLATES_DIR}/poison_order.html" "POISON_ORDER" POISON_ORDER_TEMPLATE)
 file_to_cpp_string("${TEMPLATES_DIR}/billing_statement.html" "BILLING_STATEMENT" BILLING_STATEMENT_TEMPLATE)
 file_to_cpp_string("${TEMPLATES_DIR}/purchase_order.html" "PURCHASE_ORDER" PURCHASE_ORDER_TEMPLATE)
+file_to_cpp_string("${TEMPLATES_DIR}/tabular_report.html" "TABULAR_REPORT" TABULAR_REPORT_TEMPLATE)
 
 # Generate the header file
 file(WRITE "${OUTPUT_FILE}" 
@@ -66,6 +67,10 @@ inline const char* getBillingStatementTemplate() {
 
 inline const char* getPurchaseOrderTemplate() {
     return ${PURCHASE_ORDER_TEMPLATE};
+}
+
+inline const char* getTabularReportTemplate() {
+    return ${TABULAR_REPORT_TEMPLATE};
 }
 
 } // namespace TemplateStrings

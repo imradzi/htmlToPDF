@@ -68,6 +68,7 @@ set(TEMPLATE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/templates/poison_order.html
     ${CMAKE_CURRENT_SOURCE_DIR}/templates/billing_statement.html
     ${CMAKE_CURRENT_SOURCE_DIR}/templates/purchase_order.html
+    ${CMAKE_CURRENT_SOURCE_DIR}/templates/tabular_report.html
 )
 
 set(GENERATED_TEMPLATES_HEADER ${CMAKE_CURRENT_BINARY_DIR}/generated/template_strings.h)

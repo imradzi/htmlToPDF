@@ -206,6 +206,10 @@ std::string HtmlReportBuilder::renderHtml() const {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        line-height: 1.4;
+    }
+    td:empty::after {
+        content: '\00a0';
     }
     .text-right { text-align: right; }
     .text-left { text-align: left; }

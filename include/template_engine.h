@@ -32,6 +32,7 @@ public:
     static std::string getPoisonOrderTemplate();
     static std::string getBillingStatementTemplate();
     static std::string getPurchaseOrderTemplate();
+    static std::string getTabularReportTemplate();
 
 private:
     static std::string replaceVariable(const std::string& input, 

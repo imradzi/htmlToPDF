@@ -254,3 +254,7 @@ std::string TemplateEngine::getBillingStatementTemplate() {
 std::string TemplateEngine::getPurchaseOrderTemplate() {
     return TemplateStrings::getPurchaseOrderTemplate();
 }
+
+std::string TemplateEngine::getTabularReportTemplate() {
+    return TemplateStrings::getTabularReportTemplate();
+}

@@ -205,15 +205,15 @@ std::string HtmlReportBuilder::renderHtml() const {
         padding: 1px 3px;
         border: 1px solid )" << colorToHex(theme_.boxColorRed, theme_.boxColorGreen, theme_.boxColorBlue) << R"(;
         font-size: )" << fontSize_.data << R"(pt;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
         line-height: 1.4;
+        vertical-align: top;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     td:empty::after {
         content: '\00a0';
     }
-    .text-right { text-align: right; }
+    .text-right { text-align: right; white-space: nowrap; }
     .text-left { text-align: left; }
     .footer-row td {
         font-weight: bold;
@@ -227,7 +227,33 @@ std::string HtmlReportBuilder::renderHtml() const {
         border-top: 2px solid #333;
         border-bottom: 2px solid #333;
     }
+    td.sub-table-cell {
+        padding: 0;
+    }
     .section-break { page-break-before: always; }
+    .page-title {
+        font-size: )" << fontSize_.label << R"(pt;
+        font-weight: bold;
+        padding: 4px 0;
+        margin-bottom: 2px;
+    }
+    .sub-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+        table-layout: fixed;
+    }
+    .sub-table td {
+        border: none;
+        padding: 0px 2px;
+        font-size: )" << fontSize_.data << R"(pt;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    .sub-table .text-right {
+        text-align: right;
+        white-space: nowrap;
+    }
 )";
 
     if (!customCss_.empty()) {
@@ -263,6 +289,10 @@ std::string HtmlReportBuilder::renderHtml() const {
         const auto& sec = sections_[si];
         html << "<div" << (si > 0 ? " class=\"section-break\"" : "") << ">\n";
 
+        // Section title (break-page column value)
+        if (!sec.pageTitle.empty()) {
+            html << "  <div class=\"page-title\">" << sec.pageTitle << "</div>\n";
+        }
 
         // Table
         html << "  <table>\n    <thead><tr>\n";
@@ -277,18 +307,56 @@ std::string HtmlReportBuilder::renderHtml() const {
         // Data rows
         for (const auto& row : sec.rows) {
             html << "    <tr>\n";
+            bool hasSubTable = !row.subTableHtml.empty();
             for (size_t ci = startOfs; ci < row.cells.size() && ci < columns_.size(); ++ci) {
-                html << "      <td" << (columns_[ci].isNumber ? " class=\"text-right\"" : "")
-                     << ">" << row.cells[ci] << "</td>\n";
+                // Skip detail columns covered by sub-table colspan
+                if (hasSubTable && ci > (size_t)row.subTableStartCol && ci < (size_t)(row.subTableStartCol + row.subTableColspan))
+                    continue;
+
+                bool isSubTableCell = hasSubTable && (int)ci == row.subTableStartCol;
+                std::string tdClass;
+                if (isSubTableCell) {
+                    tdClass = " class=\"sub-table-cell\"";
+                } else if (columns_[ci].isNumber) {
+                    tdClass = " class=\"text-right\"";
+                }
+                html << "      <td"
+                     << tdClass
+                     << (isSubTableCell ? fmt::format(" colspan=\"{}\"", row.subTableColspan) : "")
+                     << ">";
+                if (isSubTableCell) {
+                    html << row.subTableHtml;
+                } else {
+                    html << row.cells[ci];
+                }
+                html << "</td>\n";
             }
             html << "    </tr>\n";
         }
 
         // Page total
+        // Pre-compute detail column range for colspan in total rows (used by both page total and grand total)
+        int totDetailStart = -1, totDetailEnd = -1, totDetailColspan = 0;
+        if (hasKeyColumns()) {
+            for (size_t dj = startOfs; dj < columns_.size(); ++dj) {
+                if (dj < keyColumns_.size() && !keyColumns_[dj]) {
+                    if (totDetailStart < 0) totDetailStart = (int)dj;
+                    totDetailEnd = (int)dj;
+                }
+            }
+            totDetailColspan = (totDetailStart >= 0) ? (totDetailEnd - totDetailStart + 1) : 0;
+        }
+
         if (sec.hasPageTotal) {
             html << "    <tr class=\"footer-row\">\n";
             for (size_t ci = startOfs; ci < sec.pageTotalCells.size() && ci < columns_.size(); ++ci) {
-                html << "      <td" << (columns_[ci].isNumber ? " class=\"text-right\"" : "")
+                if (totDetailColspan > 0 && (int)ci > totDetailStart && (int)ci <= totDetailEnd) {
+                    continue;  // covered by colspan cell
+                }
+                bool isDetailStart = (totDetailColspan > 0 && (int)ci == totDetailStart);
+                html << "      <td"
+                     << (columns_[ci].isNumber ? " class=\"text-right\"" : "")
+                     << (isDetailStart ? fmt::format(" colspan=\"{}\"", totDetailColspan) : "")
                      << ">" << sec.pageTotalCells[ci] << "</td>\n";
             }
             html << "    </tr>\n";
@@ -300,8 +368,14 @@ std::string HtmlReportBuilder::renderHtml() const {
         if (hasGrandTotal_ && si == sections_.size() - 1) {
             html << "  <table><tr class=\"grand-total-row\">\n";
             for (size_t ci = startOfs; ci < grandTotalCells_.size() && ci < columns_.size(); ++ci) {
+                if (totDetailColspan > 0 && (int)ci > totDetailStart && (int)ci <= totDetailEnd) {
+                    continue;
+                }
+                bool isDetailStart = (totDetailColspan > 0 && (int)ci == totDetailStart);
                 html << "    <td style=\"width:" << fmt::format("{:.1f}", colWidths[ci])
-                     << "%\"" << (columns_[ci].isNumber ? " class=\"text-right\"" : "")
+                     << "%\""
+                     << (columns_[ci].isNumber ? " class=\"text-right\"" : "")
+                     << (isDetailStart ? fmt::format(" colspan=\"{}\"", totDetailColspan) : "")
                      << ">" << grandTotalCells_[ci] << "</td>\n";
             }
             html << "  </tr></table>\n";

@@ -31,6 +31,11 @@ public:
     // A single row of cell values
     struct RowData {
         std::vector<std::string> cells;
+        // Sub-table support: when subTableHtml is non-empty, the cell at
+        // subTableStartCol is rendered with subTableColspan and raw HTML.
+        std::string subTableHtml;
+        int subTableStartCol = -1;
+        int subTableColspan = 0;
     };
 
     // A single page/section of the report
@@ -87,6 +92,9 @@ private:
     // Page break on column 0 value change
     bool breakPageOn_ = false;
 
+    // Key column mask for sub-table grouping (from @key-columns directive)
+    std::vector<bool> keyColumns_;
+
     // Track page count
     int pageCount_ = 0;
 
@@ -109,6 +117,8 @@ public:
     void setLineHeight(int h) { lineHeight_ = h; }
     void setBreakPageOn(bool b) { breakPageOn_ = b; }
     void setCustomCss(const std::string& css) { customCss_ = css; }
+    void setKeyColumns(const std::vector<bool>& kc) { keyColumns_ = kc; }
+    bool hasKeyColumns() const { return !keyColumns_.empty(); }
 
     // --- Column management ---
     void clearColumns() { columns_.clear(); }

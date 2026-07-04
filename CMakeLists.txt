@@ -119,17 +119,26 @@ target_compile_definitions(htmlToPDF PRIVATE NDEBUG wxDEBUG_LEVEL=0)
 # Ensure template generation happens before compiling
 add_dependencies(htmlToPDF generate_templates)
 
+# Export wkhtmltox paths to parent scope so ppServer can link it explicitly
+set(WKHTMLTOX_LIBRARY "${WKHTMLTOX_LIBRARY}" PARENT_SCOPE)
+set(WKHTMLTOX_INCLUDE_DIR "${WKHTMLTOX_INCLUDE_DIR}" PARENT_SCOPE)
+
 # Link with logger from parent project if available
+# wkhtmltox is PRIVATE — only htmlToPDF itself needs it, consumers should not inherit it
 if(TARGET logger)
     target_link_libraries(htmlToPDF PUBLIC
-        ${WKHTMLTOX_LIBRARY}
         ${wxWidgets_LIBRARIES}
         logger
     )
+    target_link_libraries(htmlToPDF PRIVATE
+        ${WKHTMLTOX_LIBRARY}
+    )
 else()
     target_link_libraries(htmlToPDF PUBLIC
-        ${WKHTMLTOX_LIBRARY}
         ${wxWidgets_LIBRARIES}
+    )
+    target_link_libraries(htmlToPDF PRIVATE
+        ${WKHTMLTOX_LIBRARY}
     )
 endif()
 

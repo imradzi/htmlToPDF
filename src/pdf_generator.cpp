@@ -245,9 +245,14 @@ bool PdfGenerator::generateMultiPagePdf(const std::vector<std::string>& htmlPage
         wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
         wkhtmltopdf_set_object_setting(os, "footer.right", "Page [page] of [toPage]");
         wkhtmltopdf_set_object_setting(os, "footer.left", fmt::format("ppos {}", GetVersionNo()).c_str());
-        wkhtmltopdf_set_object_setting(os, "footer.fontSize", "4");
+        if (!settings.footerCenter.empty())
+            wkhtmltopdf_set_object_setting(os, "footer.center", settings.footerCenter.c_str());
+        wkhtmltopdf_set_object_setting(os, "footer.fontSize", settings.footerFontSize.c_str());
         if (!settings.headerLeft.empty()) {
             wkhtmltopdf_set_object_setting(os, "header.left", settings.headerLeft.c_str());
+        }
+        if (!settings.headerCenter.empty()) {
+            wkhtmltopdf_set_object_setting(os, "header.center", settings.headerCenter.c_str());
         }
         if (!settings.headerRight.empty()) {
             wkhtmltopdf_set_object_setting(os, "header.right", settings.headerRight.c_str());
@@ -394,26 +399,52 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
     wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
     wkhtmltopdf_set_object_setting(os, "footer.right", "Page [page] of [toPage]");
     wkhtmltopdf_set_object_setting(os, "footer.left", fmt::format("ppos {}", GetVersionNo()).c_str());
-    wkhtmltopdf_set_object_setting(os, "footer.fontSize", "4");
+    if (!settings.footerCenter.empty())
+        wkhtmltopdf_set_object_setting(os, "footer.center", settings.footerCenter.c_str());
+    wkhtmltopdf_set_object_setting(os, "footer.fontSize", settings.footerFontSize.c_str());
 
     std::string headerTempPath;
     bool useHtmlHeader = !settings.headerTitle.empty() || !settings.headerSubtitle.empty();
     LOG_INFO("doConvertWithSettings: headerTitle='{}', headerSubtitle='{}', useHtmlHeader={}",
              settings.headerTitle, settings.headerSubtitle, useHtmlHeader);
     if (useHtmlHeader) {
-        // Multi-line header via temp HTML file
+        // Multi-line header via temp HTML file with dynamic [section]/[subsection] support
         headerTempPath = fmt::format("/tmp/ppos_hdr_{}.html", getpid());
         std::ofstream hf(headerTempPath);
         if (hf.is_open()) {
-            hf << "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>"
+            hf << "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><script>"
+               << "function subst(){"
+               << "var vars={};"
+               << "var qs=document.location.search.substring(1).split('&');"
+               << "for(var i=0;i<qs.length;i++){"
+               << "var p=qs[i].split('=',2);"
+               << "vars[p[0]]=decodeURI(p[1]);"
+               << "}"
+               << "var cs=['section','subsection','page','topage'];"
+               << "for(var j=0;j<cs.length;j++){"
+               << "var els=document.getElementsByClassName(cs[j]);"
+               << "for(var k=0;k<els.length;k++){"
+               << "els[k].textContent=vars[cs[j]];"
+               << "}"
+               << "}"
+               << "}"
+               << "</script><style>"
                << "*{margin:0;padding:0;box-sizing:border-box;}"
                << "body{font-family:Arial,sans-serif;font-size:" << settings.headerFontSize << "pt;padding:2px 0 4px 0;}"
-               << ".l{float:left;}.r{float:right;white-space:nowrap;}"
+               << ".l{float:left;}.c{text-align:center;float:left;position:absolute;left:0;right:0;}"
+               << ".r{float:right;white-space:nowrap;}"
                << ".t{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 1) << "pt;margin-top:2px;}"
                << ".s{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 2) << "pt;}"
-               << "</style></head><body>"
-               << "<div class=\"l\">" << settings.headerLeft << "</div>"
-               << "<div class=\"r\">" << settings.headerRight << "</div>";
+               << "</style></head><body onload=\"subst()\">"
+               << "<div class=\"l\">" << settings.headerLeft << "</div>";
+            if (!settings.headerCenter.empty()) {
+                // Support [section] token via dynamic JavaScript, or static text
+                if (settings.headerCenter == "[section]")
+                    hf << "<div class=\"c\"><span class=\"section\"></span></div>";
+                else
+                    hf << "<div class=\"c\">" << settings.headerCenter << "</div>";
+            }
+            hf << "<div class=\"r\">" << settings.headerRight << "</div>";
             if (!settings.headerTitle.empty())
                 hf << "<div class=\"t\">" << settings.headerTitle << "</div>";
             if (!settings.headerSubtitle.empty())
@@ -428,9 +459,11 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
         }
     }
     if (!useHtmlHeader) {
-        // Fallback: single-line plain text header
+        // Fallback: single-line plain text header with native [section] token support
         if (!settings.headerLeft.empty())
             wkhtmltopdf_set_object_setting(os, "header.left", settings.headerLeft.c_str());
+        if (!settings.headerCenter.empty())
+            wkhtmltopdf_set_object_setting(os, "header.center", settings.headerCenter.c_str());
         if (!settings.headerRight.empty())
             wkhtmltopdf_set_object_setting(os, "header.right", settings.headerRight.c_str());
         wkhtmltopdf_set_object_setting(os, "header.fontSize", settings.headerFontSize.c_str());

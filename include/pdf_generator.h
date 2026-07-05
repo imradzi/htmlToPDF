@@ -32,10 +32,13 @@ public:
         int marginLeft = 10;
         int marginRight = 10;
         std::string headerLeft;
+        std::string headerCenter;   // centered header text (supports [section] token)
         std::string headerRight;
         std::string headerTitle;    // appears below headerLeft on a second line
         std::string headerSubtitle; // appears below headerTitle on a third line
         std::string headerFontSize = "8";
+        std::string footerCenter;   // centered footer text (supports [subsection]/[page] tokens)
+        std::string footerFontSize = "4";
     };
 
     PdfGenerator();

@@ -235,7 +235,7 @@ std::string HtmlReportBuilder::renderHtml() const {
         font-size: )" << fontSize_.label << R"(pt;
         font-weight: bold;
         padding: 4px 0;
-        margin-bottom: 2px;
+        margin: 0 0 2px 0;
     }
     .sub-table {
         width: 100%;
@@ -289,9 +289,23 @@ std::string HtmlReportBuilder::renderHtml() const {
         const auto& sec = sections_[si];
         html << "<div" << (si > 0 ? " class=\"section-break\"" : "") << ">\n";
 
-        // Section title (break-page column value)
+        // Section title as h1 for wkhtmltopdf [section] token support
         if (!sec.pageTitle.empty()) {
-            html << "  <div class=\"page-title\">" << sec.pageTitle << "</div>\n";
+            html << "  <h1 class=\"page-title\">" << sec.pageTitle << "</h1>\n";
+        }
+
+        // Hidden h2 with page total for wkhtmltopdf [subsection] footer token
+        if (sec.hasPageTotal) {
+            std::string pageTotalStr;
+            for (size_t ci = 0; ci < columns_.size() && ci < sec.pageTotalCells.size(); ++ci) {
+                if (!sec.pageTotalCells[ci].empty()) {
+                    if (!pageTotalStr.empty()) pageTotalStr += " ";
+                    pageTotalStr += sec.pageTotalCells[ci];
+                }
+            }
+            if (!pageTotalStr.empty()) {
+                html << "  <h2 style=\"visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;font-size:0;line-height:0\">" << pageTotalStr << "</h2>\n";
+            }
         }
 
         // Table
@@ -405,10 +419,12 @@ bool HtmlReportBuilder::generatePdf(const std::string& outputPath) const {
     settings.marginLeft = 10;
     settings.marginRight = 10;
     settings.headerLeft = outletName_;
+    settings.headerCenter = "[section]";
     settings.headerRight = dateTimeStr.str();
     settings.headerTitle = title_;
     settings.headerSubtitle = subtitle_;
     settings.headerFontSize = "10";
+    settings.footerCenter = "[subsection]";
 
     htmlToPDF::PdfGeneratorProxy proxy;
     return proxy.generateFromHtml(htmlContent, outputPath, settings);

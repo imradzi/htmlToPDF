@@ -289,9 +289,9 @@ std::string HtmlReportBuilder::renderHtml() const {
         const auto& sec = sections_[si];
         html << "<div" << (si > 0 ? " class=\"section-break\"" : "") << ">\n";
 
-        // Section title as h1 for wkhtmltopdf [section] token support
+        // Section title as h1 for wkhtmltopdf [section] token (hidden in body, shown in header)
         if (!sec.pageTitle.empty()) {
-            html << "  <h1 class=\"page-title\">" << sec.pageTitle << "</h1>\n";
+            html << "  <h1 style=\"position:absolute;left:-9999px\">" << sec.pageTitle << "</h1>\n";
         }
 
         // Hidden h2 with page total for wkhtmltopdf [subsection] footer token
@@ -414,7 +414,7 @@ bool HtmlReportBuilder::generatePdf(const std::string& outputPath) const {
     htmlToPDF::PdfGenerator::PdfSettings settings;
     settings.orientation = isLandscape() ? "Landscape" : "Portrait";
     settings.pageSize = "A4";
-    settings.marginTop = 15;
+    settings.marginTop = 25;   // room for multi-line header (outlet/date + title + subtitle + section)
     settings.marginBottom = 10;
     settings.marginLeft = 10;
     settings.marginRight = 10;

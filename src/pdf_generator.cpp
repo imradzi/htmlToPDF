@@ -430,25 +430,25 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
                << "}"
                << "</script><style>"
                << "*{margin:0;padding:0;box-sizing:border-box;}"
-               << "body{font-family:Arial,sans-serif;font-size:" << settings.headerFontSize << "pt;padding:2px 0 4px 0;}"
-               << ".l{float:left;}.c{text-align:center;float:left;position:absolute;left:0;right:0;}"
-               << ".r{float:right;white-space:nowrap;}"
+               << "body{font-family:Arial,sans-serif;font-size:" << settings.headerFontSize << "pt;padding:4px 0 4px 0;}"
+               << ".l{float:left;}.r{float:right;white-space:nowrap;}"
                << ".t{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 1) << "pt;margin-top:2px;}"
                << ".s{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 2) << "pt;}"
+               << ".sec{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 1) << "pt;margin-top:3px;word-wrap:break-word;}"
                << "</style></head><body onload=\"subst()\">"
-               << "<div class=\"l\">" << settings.headerLeft << "</div>";
-            if (!settings.headerCenter.empty()) {
-                // Support [section] token via dynamic JavaScript, or static text
-                if (settings.headerCenter == "[section]")
-                    hf << "<div class=\"c\"><span class=\"section\"></span></div>";
-                else
-                    hf << "<div class=\"c\">" << settings.headerCenter << "</div>";
-            }
-            hf << "<div class=\"r\">" << settings.headerRight << "</div>";
+               << "<div class=\"l\">" << settings.headerLeft << "</div>"
+               << "<div class=\"r\">" << settings.headerRight << "</div>";
             if (!settings.headerTitle.empty())
                 hf << "<div class=\"t\">" << settings.headerTitle << "</div>";
             if (!settings.headerSubtitle.empty())
                 hf << "<div class=\"s\">" << settings.headerSubtitle << "</div>";
+            if (!settings.headerCenter.empty()) {
+                // Support [section] token via dynamic JavaScript, or static text
+                if (settings.headerCenter == "[section]")
+                    hf << "<div class=\"sec\"><span class=\"section\"></span></div>";
+                else
+                    hf << "<div class=\"sec\">" << settings.headerCenter << "</div>";
+            }
             hf << "</body></html>";
             hf.close();
             wkhtmltopdf_set_object_setting(os, "header.htmlUrl", headerTempPath.c_str());
@@ -469,7 +469,7 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
         wkhtmltopdf_set_object_setting(os, "header.fontSize", settings.headerFontSize.c_str());
         wkhtmltopdf_set_object_setting(os, "header.fontName", "Arial");
     }
-    wkhtmltopdf_set_object_setting(os, "header.spacing", "3");
+    wkhtmltopdf_set_object_setting(os, "header.spacing", "5");
     wkhtmltopdf_set_object_setting(os, "header.line", "");
 
     wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);

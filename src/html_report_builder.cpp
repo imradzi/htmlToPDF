@@ -8,6 +8,8 @@
 #include <iomanip>
 #include <chrono>
 #include <ctime>
+#include <cctype>
+#include <cstdlib>
 #include <filesystem>
 
 
@@ -291,7 +293,21 @@ std::string HtmlReportBuilder::renderHtml() const {
 
         // Section title as h1 for wkhtmltopdf [section] token (hidden in body, shown in header)
         if (!sec.pageTitle.empty()) {
-            html << "  <h1 style=\"position:absolute;left:-9999px\">" << sec.pageTitle << "</h1>\n";
+            // URL-decode any percent-encoded chars (e.g. %26 → &) then replace & with safe placeholder
+            std::string safeTitle;
+            safeTitle.reserve(sec.pageTitle.size());
+            for (size_t i = 0; i < sec.pageTitle.size(); ++i) {
+                if (sec.pageTitle[i] == '%' && i + 2 < sec.pageTitle.size()
+                    && std::isxdigit(static_cast<unsigned char>(sec.pageTitle[i+1]))
+                    && std::isxdigit(static_cast<unsigned char>(sec.pageTitle[i+2]))) {
+                    char hex[3] = {sec.pageTitle[i+1], sec.pageTitle[i+2], '\0'};
+                    safeTitle += static_cast<char>(std::strtol(hex, nullptr, 16));
+                    i += 2;
+                } else {
+                    safeTitle += sec.pageTitle[i];
+                }
+            }
+            html << "  <h1 style=\"position:absolute;left:-9999px\">" << safeTitle << "</h1>\n";
         }
 
         // Hidden h2 with page total for wkhtmltopdf [subsection] footer token

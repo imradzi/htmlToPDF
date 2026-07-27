@@ -204,6 +204,8 @@ bool PdfGenerator::generateFromHtml(const std::string& htmlContent, const std::s
 bool PdfGenerator::generateMultiPagePdf(const std::vector<std::string>& htmlPages, const std::string& outputPath, const PdfSettings& settings) {
     if (htmlPages.empty()) return false;
     
+    LOG_INFO("Generating multi-page PDF with {} pages", htmlPages.size());
+
     std::lock_guard<std::mutex> lock(mutex_);
     
     if (!initialized_) {
@@ -412,19 +414,46 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
         headerTempPath = fmt::format("/tmp/ppos_hdr_{}.html", getpid());
         std::ofstream hf(headerTempPath);
         if (hf.is_open()) {
+            // HTML-escape static text to prevent & from rendering as %26
+            auto htmlEscape = [](const std::string& s) -> std::string {
+                std::string out;
+                out.reserve(s.size());
+                for (char c : s) {
+                    switch (c) {
+                        case '&': out += "&amp;"; break;
+                        case '<': out += "&lt;"; break;
+                        case '>': out += "&gt;"; break;
+                        case '"': out += "&quot;"; break;
+                        default: out += c;
+                    }
+                }
+                return out;
+            };
+
             hf << "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><script>"
+               << "function urldecode(s){"
+               << "return s.replace(/%([0-9A-Fa-f]{2})/g,function(m,h){"
+               << "return String.fromCharCode(parseInt(h,16));});}"
                << "function subst(){"
                << "var vars={};"
-               << "var qs=document.location.search.substring(1).split('&');"
-               << "for(var i=0;i<qs.length;i++){"
-               << "var p=qs[i].split('=',2);"
-               << "vars[p[0]]=decodeURI(p[1]);"
+               << "var qs=document.location.search.substring(1);"
+               << "if(qs){"
+               << "var pairs=qs.split('&');"
+               << "for(var i=0;i<pairs.length;i++){"
+               << "var p=pairs[i].split('=',2);"
+               << "var k=p[0];var v=p[1]||'';"
+               << "v=urldecode(v);"
+               << "vars[k]=v;"
                << "}"
-               << "var cs=['section','subsection','page','topage'];"
+               << "}"
+               << "vars['_rawsec']=vars['section']||'NOVALUE';"
+               << "var cs=['section','subsection','page','topage','_rawsec'];"
                << "for(var j=0;j<cs.length;j++){"
                << "var els=document.getElementsByClassName(cs[j]);"
                << "for(var k=0;k<els.length;k++){"
-               << "els[k].textContent=vars[cs[j]];"
+               << "var t=vars[cs[j]]||'';"
+               << "t=t.replace(/%26/g,'&');"
+               << "els[k].textContent=t;"
                << "}"
                << "}"
                << "}"
@@ -436,18 +465,17 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
                << ".s{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 2) << "pt;}"
                << ".sec{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 1) << "pt;margin-top:3px;word-wrap:break-word;}"
                << "</style></head><body onload=\"subst()\">"
-               << "<div class=\"l\">" << settings.headerLeft << "</div>"
-               << "<div class=\"r\">" << settings.headerRight << "</div>";
+               << "<div class=\"l\">" << htmlEscape(settings.headerLeft) << "</div>"
+               << "<div class=\"r\">" << htmlEscape(settings.headerRight) << "</div>";
             if (!settings.headerTitle.empty())
-                hf << "<div class=\"t\">" << settings.headerTitle << "</div>";
+                hf << "<div class=\"t\">" << htmlEscape(settings.headerTitle) << "</div>";
             if (!settings.headerSubtitle.empty())
-                hf << "<div class=\"s\">" << settings.headerSubtitle << "</div>";
+                hf << "<div class=\"s\">" << htmlEscape(settings.headerSubtitle) << "</div>";
             if (!settings.headerCenter.empty()) {
-                // Support [section] token via dynamic JavaScript, or static text
                 if (settings.headerCenter == "[section]")
                     hf << "<div class=\"sec\"><span class=\"section\"></span></div>";
                 else
-                    hf << "<div class=\"sec\">" << settings.headerCenter << "</div>";
+                    hf << "<div class=\"sec\">" << htmlEscape(settings.headerCenter) << "</div>";
             }
             hf << "</body></html>";
             hf.close();
@@ -462,8 +490,9 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
         // Fallback: single-line plain text header with native [section] token support
         if (!settings.headerLeft.empty())
             wkhtmltopdf_set_object_setting(os, "header.left", settings.headerLeft.c_str());
-        if (!settings.headerCenter.empty())
+        if (!settings.headerCenter.empty()) {
             wkhtmltopdf_set_object_setting(os, "header.center", settings.headerCenter.c_str());
+        }
         if (!settings.headerRight.empty())
             wkhtmltopdf_set_object_setting(os, "header.right", settings.headerRight.c_str());
         wkhtmltopdf_set_object_setting(os, "header.fontSize", settings.headerFontSize.c_str());

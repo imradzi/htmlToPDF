@@ -11,7 +11,7 @@
 #include <sstream>
 #include <cstring>
 #include <cstdio>
-#include <unistd.h>
+#include <boost/filesystem.hpp>
 #include "logging.hpp"
 #include "global.h"
 #include "fmt/format.h"
@@ -411,7 +411,15 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
              settings.headerTitle, settings.headerSubtitle, useHtmlHeader);
     if (useHtmlHeader) {
         // Multi-line header via temp HTML file with dynamic [section]/[subsection] support
-        headerTempPath = fmt::format("/tmp/ppos_hdr_{}.html", getpid());
+        // Use boost::filesystem for a cross-platform temp path (works on Windows too)
+        boost::system::error_code ec;
+        boost::filesystem::path tempDir = boost::filesystem::temp_directory_path(ec);
+        if (ec) {
+            LOG_ERROR("Failed to get temp directory: {}", ec.message());
+            tempDir = boost::filesystem::current_path();
+        }
+        boost::filesystem::path headerTempFile = tempDir / boost::filesystem::unique_path("ppos_hdr_%%%%%%%%.html");
+        headerTempPath = headerTempFile.string();
         std::ofstream hf(headerTempPath);
         if (hf.is_open()) {
             // HTML-escape static text to prevent & from rendering as %26

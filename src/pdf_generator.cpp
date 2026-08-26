@@ -220,6 +220,9 @@ bool PdfGenerator::generateMultiPagePdf(const std::vector<std::string>& htmlPage
     }
     
     wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
+    // Keep going if a page (e.g. header HTML) fails to load instead of
+    // aborting the whole conversion (EMFILE "Too many open files" safety net).
+    wkhtmltopdf_set_global_setting(gs, "load.loadErrorHandling", "ignore");
     wkhtmltopdf_set_global_setting(gs, "size.pageSize", settings.pageSize.c_str());
     wkhtmltopdf_set_global_setting(gs, "orientation", settings.orientation.c_str());
     
@@ -312,7 +315,11 @@ bool PdfGenerator::doConvert(const std::string& htmlContent, const std::string& 
     if (!outputPath.empty()) {
         wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
     }
-    
+
+    // Keep going if a page (e.g. header HTML) fails to load instead of
+    // aborting the whole conversion (EMFILE "Too many open files" safety net).
+    wkhtmltopdf_set_global_setting(gs, "load.loadErrorHandling", "ignore");
+
     wkhtmltopdf_set_global_setting(gs, "size.pageSize", config_.pageSize.c_str());
     wkhtmltopdf_set_global_setting(gs, "margin.top", config_.marginTop.c_str());
     wkhtmltopdf_set_global_setting(gs, "margin.bottom", config_.marginBottom.c_str());
@@ -380,6 +387,9 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
     }
     
     wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
+    // Keep going if a page (e.g. header HTML) fails to load instead of
+    // aborting the whole conversion (EMFILE "Too many open files" safety net).
+    wkhtmltopdf_set_global_setting(gs, "load.loadErrorHandling", "ignore");
     wkhtmltopdf_set_global_setting(gs, "size.pageSize", settings.pageSize.c_str());
     wkhtmltopdf_set_global_setting(gs, "orientation", settings.orientation.c_str());
     

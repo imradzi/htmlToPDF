@@ -246,7 +246,7 @@
                                     {{#if is_purchase_order}}<tr><td class="left-col">Our Ref</td><td class="right-col">{{id}}</td></tr>{{/if}}
                                     <tr><td class="left-col">Page</td><td class="right-col">{{page_no}} of {{total_pages}}</td></tr>
                                     <tr><td class="left-col">Term</td><td class="right-col">{{term}}</td></tr>
-                                    <tr><td class="left-col-amt">TOTAL</td><td class="right-col-amt">{{total_amount}}</td></tr>
+                                    {{#if show_minimal}}{{else}}<tr><td class="left-col-amt">TOTAL</td><td class="right-col-amt">{{total_amount}}</td></tr>{{/if}}
                                 </table>
                             </td>
                         </tr>

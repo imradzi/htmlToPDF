@@ -199,9 +199,9 @@ std::string HtmlReportBuilder::renderHtml() const {
         text-align: left;
         padding: 2px 3px;
         border: 1px solid )" << colorToHex(theme_.boxColorRed, theme_.boxColorGreen, theme_.boxColorBlue) << R"(;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     td {
         padding: 1px 3px;
@@ -216,6 +216,7 @@ std::string HtmlReportBuilder::renderHtml() const {
         content: '\00a0';
     }
     .text-right { text-align: right; white-space: nowrap; }
+    th.text-right { white-space: normal; }
     .text-left { text-align: left; }
     .footer-row td {
         font-weight: bold;

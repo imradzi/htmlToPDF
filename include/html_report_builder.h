@@ -47,6 +47,17 @@ public:
         std::vector<RowData> rows;
         std::vector<std::string> pageTotalCells;
         bool hasPageTotal = false;
+        // Column layout for this section, snapshotted from the builder's current
+        // columns when the section is created. Reports with several result sets may
+        // change their column layout between sections (e.g. summary table followed
+        // by a detail table with different columns), so each section renders with
+        // the layout that was active when it was created.
+        std::vector<ColumnDef> columns;
+        // Whether column 0 is used as a page-break/title column (hidden from the
+        // table), snapshotted when the section is created. Each result set has its
+        // own @break-page directive, so later result sets must not change how
+        // earlier sections render.
+        bool breakPage = false;
     };
 
     // Theme colors

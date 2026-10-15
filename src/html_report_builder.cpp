@@ -39,6 +39,8 @@ HtmlReportBuilder::Section& HtmlReportBuilder::newSection(const std::string& pag
     sec.subtitle = subtitle_;
     sec.pageTitle = pageTitle;
     sec.pageNo = static_cast<int>(sections_.size()) + 1;
+    sec.columns = columns_;  // snapshot the current column layout for this section
+    sec.breakPage = breakPageOn_;  // and the break-page setting it was created with
     sections_.push_back(std::move(sec));
     currentSection_ = &sections_.back();
     pageCount_ = static_cast<int>(sections_.size());
@@ -268,17 +270,21 @@ std::string HtmlReportBuilder::renderHtml() const {
 <body>
 )";
 
-    // Compute column widths as percentages
-    double totalWeightage = 0;
-    for (const auto& col : columns_) {
-        totalWeightage += col.weightage;
-    }
-    std::vector<double> colWidths;
-    for (const auto& col : columns_) {
-        colWidths.push_back(totalWeightage > 0 ? (col.weightage / totalWeightage * 100.0) : 0);
-    }
-
-    int startOfs = breakPageOn_ ? 1 : 0;
+    // Compute column widths as percentages. Columns may change between sections
+    // (reports can have several result sets with different column layouts), so
+    // widths are computed from each section's own column definitions below.
+    auto computeColWidths = [](const std::vector<ColumnDef>& cols) {
+        double totalWeightage = 0;
+        for (const auto& col : cols) {
+            totalWeightage += col.weightage;
+        }
+        std::vector<double> widths;
+        widths.reserve(cols.size());
+        for (const auto& col : cols) {
+            widths.push_back(totalWeightage > 0 ? (col.weightage / totalWeightage * 100.0) : 0);
+        }
+        return widths;
+    };
 
     if (noData_ && sections_.empty()) {
         html << R"(<div style="text-align:center; margin-top: 40mm;">
@@ -290,6 +296,14 @@ std::string HtmlReportBuilder::renderHtml() const {
 
     for (size_t si = 0; si < sections_.size(); ++si) {
         const auto& sec = sections_[si];
+        // Use the section's own column layout (falls back to the builder's
+        // current columns for sections created before any columns were defined).
+        const std::vector<ColumnDef>& cols = sec.columns.empty() ? columns_ : sec.columns;
+        std::vector<double> colWidths = computeColWidths(cols);
+        // Each section keeps the break-page setting it was created with (column 0
+        // hidden as the page-title column); a later result set without @break-page
+        // must not unhide it.
+        int startOfs = sec.breakPage ? 1 : 0;
         html << "<div" << (si > 0 ? " class=\"section-break\"" : "") << ">\n";
 
         // Section title as h1 for wkhtmltopdf [section] token (hidden in body, shown in header)
@@ -314,7 +328,7 @@ std::string HtmlReportBuilder::renderHtml() const {
         // Hidden h2 with page total for wkhtmltopdf [subsection] footer token
         if (sec.hasPageTotal) {
             std::string pageTotalStr;
-            for (size_t ci = 0; ci < columns_.size() && ci < sec.pageTotalCells.size(); ++ci) {
+            for (size_t ci = 0; ci < cols.size() && ci < sec.pageTotalCells.size(); ++ci) {
                 if (!sec.pageTotalCells[ci].empty()) {
                     if (!pageTotalStr.empty()) pageTotalStr += " ";
                     pageTotalStr += sec.pageTotalCells[ci];
@@ -327,8 +341,8 @@ std::string HtmlReportBuilder::renderHtml() const {
 
         // Table
         html << "  <table>\n    <thead><tr>\n";
-        for (size_t ci = startOfs; ci < columns_.size(); ++ci) {
-            const auto& col = columns_[ci];
+        for (size_t ci = startOfs; ci < cols.size(); ++ci) {
+            const auto& col = cols[ci];
             html << "      <th style=\"width:" << fmt::format("{:.1f}", colWidths[ci])
                  << "%\"" << (col.isNumber ? " class=\"text-right\"" : "") << ">"
                  << col.name << "</th>\n";
@@ -339,7 +353,7 @@ std::string HtmlReportBuilder::renderHtml() const {
         for (const auto& row : sec.rows) {
             html << "    <tr>\n";
             bool hasSubTable = !row.subTableHtml.empty();
-            for (size_t ci = startOfs; ci < row.cells.size() && ci < columns_.size(); ++ci) {
+            for (size_t ci = startOfs; ci < row.cells.size() && ci < cols.size(); ++ci) {
                 // Skip detail columns covered by sub-table colspan
                 if (hasSubTable && ci > (size_t)row.subTableStartCol && ci < (size_t)(row.subTableStartCol + row.subTableColspan))
                     continue;
@@ -348,7 +362,7 @@ std::string HtmlReportBuilder::renderHtml() const {
                 std::string tdClass;
                 if (isSubTableCell) {
                     tdClass = " class=\"sub-table-cell\"";
-                } else if (columns_[ci].isNumber) {
+                } else if (cols[ci].isNumber) {
                     tdClass = " class=\"text-right\"";
                 }
                 html << "      <td"
@@ -369,7 +383,7 @@ std::string HtmlReportBuilder::renderHtml() const {
         // Pre-compute detail column range for colspan in total rows (used by both page total and grand total)
         int totDetailStart = -1, totDetailEnd = -1, totDetailColspan = 0;
         if (hasKeyColumns()) {
-            for (size_t dj = startOfs; dj < columns_.size(); ++dj) {
+            for (size_t dj = startOfs; dj < cols.size(); ++dj) {
                 if (dj < keyColumns_.size() && !keyColumns_[dj]) {
                     if (totDetailStart < 0) totDetailStart = (int)dj;
                     totDetailEnd = (int)dj;
@@ -380,13 +394,13 @@ std::string HtmlReportBuilder::renderHtml() const {
 
         if (sec.hasPageTotal) {
             html << "    <tr class=\"footer-row\">\n";
-            for (size_t ci = startOfs; ci < sec.pageTotalCells.size() && ci < columns_.size(); ++ci) {
+            for (size_t ci = startOfs; ci < sec.pageTotalCells.size() && ci < cols.size(); ++ci) {
                 if (totDetailColspan > 0 && (int)ci > totDetailStart && (int)ci <= totDetailEnd) {
                     continue;  // covered by colspan cell
                 }
                 bool isDetailStart = (totDetailColspan > 0 && (int)ci == totDetailStart);
                 html << "      <td"
-                     << (columns_[ci].isNumber ? " class=\"text-right\"" : "")
+                     << (cols[ci].isNumber ? " class=\"text-right\"" : "")
                      << (isDetailStart ? fmt::format(" colspan=\"{}\"", totDetailColspan) : "")
                      << ">" << sec.pageTotalCells[ci] << "</td>\n";
             }
@@ -398,14 +412,14 @@ std::string HtmlReportBuilder::renderHtml() const {
         // Grand total (only on last section)
         if (hasGrandTotal_ && si == sections_.size() - 1) {
             html << "  <table><tr class=\"grand-total-row\">\n";
-            for (size_t ci = startOfs; ci < grandTotalCells_.size() && ci < columns_.size(); ++ci) {
+            for (size_t ci = startOfs; ci < grandTotalCells_.size() && ci < cols.size(); ++ci) {
                 if (totDetailColspan > 0 && (int)ci > totDetailStart && (int)ci <= totDetailEnd) {
                     continue;
                 }
                 bool isDetailStart = (totDetailColspan > 0 && (int)ci == totDetailStart);
                 html << "    <td style=\"width:" << fmt::format("{:.1f}", colWidths[ci])
                      << "%\""
-                     << (columns_[ci].isNumber ? " class=\"text-right\"" : "")
+                     << (cols[ci].isNumber ? " class=\"text-right\"" : "")
                      << (isDetailStart ? fmt::format(" colspan=\"{}\"", totDetailColspan) : "")
                      << ">" << grandTotalCells_[ci] << "</td>\n";
             }

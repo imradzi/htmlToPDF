@@ -1,1 +1,4 @@
 build
+build-linux
+third_party/plutobook/build-*/
+third_party/prefix/

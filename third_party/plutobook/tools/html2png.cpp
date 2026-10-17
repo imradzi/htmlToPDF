@@ -1,0 +1,56 @@
+/*
+ * Copyright (c) 2022-2026 Samuel Ugochukwu <sammycageagle@gmail.com>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+#include "plutobook.hpp"
+#include "argparser.h"
+
+#include <cstdio>
+
+using namespace plutobook;
+
+int main(int argc, char* argv[])
+{
+    const char* input = "";
+    const char* output = "";
+
+    float viewport_width = 1280 * units::px;
+    float viewport_height = 720 * units::px;
+
+    float width = -1;
+    float height = -1;
+
+    const char* user_style = "";
+    const char* user_script = "";
+
+    ArgDesc args[] = {
+        {"input", ArgType::String, &input, nullptr, "Specify the input HTML filename or URL"},
+        {"output", ArgType::String, &output, nullptr, "Specify the output PNG filename"},
+
+        {"--viewport-width", ArgType::Length, &viewport_width, nullptr, "Specify the viewport width (eg. 1280px)"},
+        {"--viewport-height", ArgType::Length, &viewport_height, nullptr, "Specify the viewport height (eg. 720px)"},
+
+        {"--width", ArgType::Length, &width, nullptr, "Specify the output image width (eg. 800px)"},
+        {"--height", ArgType::Length, &height, nullptr, "Specify the output image height (eg. 600px)"},
+
+        {"--user-style", ArgType::String, &user_style, nullptr, "Specify the user-defined CSS style"},
+        {"--user-script", ArgType::String, &user_script, nullptr, "Specify the user-defined JavaScript"},
+        {nullptr}
+    };
+
+    parseArgs("html2png", "Convert HTML to PNG", args, argc, argv);
+
+    PageSize size(viewport_width, viewport_height);
+    Book book(size, PageMargins::None, MediaType::Screen);
+    if(book.loadUrl(input, user_style, user_script)
+        && book.writeToPng(output, width / units::px, height / units::px)) {
+        return 0;
+    }
+
+    fprintf(stderr, "ERROR: %s\n", plutobook_get_error_message());
+    return 1;
+}

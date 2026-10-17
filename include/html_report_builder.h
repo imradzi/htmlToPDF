@@ -6,8 +6,9 @@
 #include <functional>
 #include "template_engine.h"
 
-// Replacement for ReportPDF that generates HTML for wkhtmltox-based PDF output.
-// Collects data into structured data and renders HTML, then converts to PDF via wkhtmltox.
+// Replacement for ReportPDF that generates HTML and converts it to PDF with
+// PlutoBook. Collects data into structured sections, renders HTML, then lays
+// each section out as its own document and concatenates the pages.
 class HtmlReportBuilder {
 public:
     // Font size settings (matching ReportPDF's fontSize struct)
@@ -71,6 +72,8 @@ public:
     };
 
 private:
+    std::string renderHtmlImpl(size_t firstSection, size_t lastSection) const;
+
     std::string title_;
     std::string subtitle_;
     std::string outletName_;
@@ -162,6 +165,11 @@ public:
 
     // Render HTML string from template
     std::string renderHtml() const;
+
+    // Render one section as a standalone document. Used for PDF generation so
+    // each section can carry its own running header/footer (PlutoBook running
+    // elements are document-wide, not page-dynamic).
+    std::string renderSectionHtml(size_t sectionIndex) const;
 
     // Generate PDF file, returns the output path
     bool generatePdf(const std::string& outputPath) const;

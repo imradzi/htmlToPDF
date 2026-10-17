@@ -1,0 +1,453 @@
+/*
+ * Copyright (c) 2022-2026 Samuel Ugochukwu <sammycageagle@gmail.com>
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
+#ifndef PLUTOBOOK_FONTRESOURCE_H
+#define PLUTOBOOK_FONTRESOURCE_H
+
+#include "resource.h"
+#include "globalstring.h"
+
+#include <variant>
+#include <vector>
+#include <forward_list>
+#include <map>
+#include <mutex>
+
+typedef struct hb_font_t hb_font_t;
+typedef struct _cairo_font_face cairo_font_face_t;
+typedef struct _cairo_scaled_font cairo_scaled_font_t;
+typedef struct _FcCharSet FcCharSet;
+typedef struct _FcConfig FcConfig;
+
+namespace plutobook {
+
+class Document;
+
+class FontResource final : public Resource {
+public:
+    static RefPtr<FontResource> create(Document* document, const Url& url);
+    static bool supportsFormat(std::string_view format);
+    cairo_font_face_t* face() const { return m_face; }
+    FcCharSet* charSet() const { return m_charSet; }
+    Type type() const final { return Type::Font; }
+
+    ~FontResource() final;
+
+private:
+    FontResource(cairo_font_face_t* face, FcCharSet* charSet)
+        : m_face(face), m_charSet(charSet)
+    {}
+
+    cairo_font_face_t* m_face;
+    FcCharSet* m_charSet;
+};
+
+template<>
+struct is_a<FontResource> {
+    static bool check(const Resource& value) { return value.type() == Resource::Type::Font; }
+};
+
+using FontSelectionValue = float;
+
+constexpr FontSelectionValue kNormalFontWeight = 400.f;
+constexpr FontSelectionValue kBoldFontWeight = 700.f;
+constexpr FontSelectionValue kLightFontWeight = 200.f;
+constexpr FontSelectionValue kMinFontWeight = 1.f;
+constexpr FontSelectionValue kMaxFontWeight = 1000.f;
+
+constexpr FontSelectionValue kNormalFontWidth = 100.f;
+constexpr FontSelectionValue kUltraCondensedFontWidth = 50.f;
+constexpr FontSelectionValue kExtraCondensedFontWidth = 62.5f;
+constexpr FontSelectionValue kCondensedFontWidth = 75.f;
+constexpr FontSelectionValue kSemiCondensedFontWidth = 85.5f;
+constexpr FontSelectionValue kSemiExpandedFontWidth = 112.5f;
+constexpr FontSelectionValue kExpandedFontWidth = 125.f;
+constexpr FontSelectionValue kExtraExpandedFontWidth = 150.f;
+constexpr FontSelectionValue kUltraExpandedFontWidth = 200.f;
+
+constexpr FontSelectionValue kNormalFontSlope = 0.f;
+constexpr FontSelectionValue kItalicFontSlope = 14.f;
+constexpr FontSelectionValue kObliqueFontSlope = 20.f;
+constexpr FontSelectionValue kMinFontSlope = -90.f;
+constexpr FontSelectionValue kMaxFontSlope = 90.f;
+
+struct FontSelectionRequest {
+    constexpr FontSelectionRequest() = default;
+    constexpr FontSelectionRequest(FontSelectionValue weight, FontSelectionValue width, FontSelectionValue slope)
+        : weight(weight), width(width), slope(slope)
+    {}
+
+    FontSelectionValue weight = kNormalFontWeight;
+    FontSelectionValue width = kNormalFontWidth;
+    FontSelectionValue slope = kNormalFontSlope;
+};
+
+constexpr bool operator==(const FontSelectionRequest& a, const FontSelectionRequest& b)
+{
+    return std::tie(a.weight, a.width, a.slope) == std::tie(b.weight, b.width, b.slope);
+}
+
+constexpr bool operator<(const FontSelectionRequest& a, const FontSelectionRequest& b)
+{
+    return std::tie(a.weight, a.width, a.slope) < std::tie(b.weight, b.width, b.slope);
+}
+
+struct FontSelectionRange {
+    constexpr FontSelectionRange() = default;
+    constexpr explicit FontSelectionRange(FontSelectionValue value)
+        : minimum(value), maximum(value)
+    {}
+
+    constexpr FontSelectionRange(FontSelectionValue minimum, FontSelectionValue maximum)
+        : minimum(minimum), maximum(maximum)
+    {}
+
+    constexpr explicit operator bool() const { return maximum >= minimum; }
+
+    FontSelectionValue minimum = FontSelectionValue(0);
+    FontSelectionValue maximum = FontSelectionValue(0);
+};
+
+constexpr FontSelectionRange kInvalidFontSelectionRange = FontSelectionRange(1, 0);
+
+constexpr bool operator==(const FontSelectionRange& a, const FontSelectionRange& b)
+{
+    return std::tie(a.minimum, a.maximum) == std::tie(b.minimum, b.maximum);
+}
+
+constexpr bool operator<(const FontSelectionRange& a, const FontSelectionRange& b)
+{
+    return std::tie(a.minimum, a.maximum) < std::tie(b.minimum, b.maximum);
+}
+
+struct FontSelectionDescription {
+    constexpr FontSelectionDescription() = default;
+    constexpr explicit FontSelectionDescription(const FontSelectionRequest& request)
+        : weight(request.weight), width(request.width), slope(request.slope)
+    {}
+
+    constexpr FontSelectionDescription(FontSelectionRange weight, FontSelectionRange width, FontSelectionRange slope)
+        : weight(weight), width(width), slope(slope)
+    {}
+
+    FontSelectionRange weight = kInvalidFontSelectionRange;
+    FontSelectionRange width = kInvalidFontSelectionRange;
+    FontSelectionRange slope = kInvalidFontSelectionRange;
+};
+
+constexpr bool operator==(const FontSelectionDescription& a, const FontSelectionDescription& b)
+{
+    return std::tie(a.weight, a.width, a.slope) == std::tie(b.weight, b.width, b.slope);
+}
+
+constexpr bool operator<(const FontSelectionDescription& a, const FontSelectionDescription& b)
+{
+    return std::tie(a.weight, a.width, a.slope) < std::tie(b.weight, b.width, b.slope);
+}
+
+class FontSelectionAlgorithm {
+public:
+    explicit FontSelectionAlgorithm(const FontSelectionRequest& request);
+
+    void addCandidate(const FontSelectionDescription& description);
+
+    FontSelectionValue widthDistance(const FontSelectionRange& width) const;
+    FontSelectionValue slopeDistance(const FontSelectionRange& slope) const;
+    FontSelectionValue weightDistance(const FontSelectionRange& weight) const;
+
+    bool isCandidateBetter(const FontSelectionDescription& currentCandidate, const FontSelectionDescription& previousCandidate) const;
+
+private:
+    FontSelectionRequest m_request;
+    FontSelectionRange m_weight;
+    FontSelectionRange m_width;
+    FontSelectionRange m_slope;
+};
+
+class FontTag {
+public:
+    constexpr explicit FontTag(uint32_t value) : m_value(value) {}
+    constexpr explicit FontTag(std::string_view tag)
+        : m_value((tag[0] << 24) | (tag[1] << 16) | (tag[2] << 8) | (tag[3]))
+    {
+        assert(tag.length() == 4);
+    }
+
+    constexpr uint32_t value() const { return m_value; }
+
+private:
+    uint32_t m_value;
+};
+
+constexpr bool operator==(const FontTag& a, const FontTag& b) { return a.value() == b.value(); }
+constexpr bool operator<(const FontTag& a, const FontTag& b) { return a.value() < b.value(); }
+
+using FontFeature = std::pair<FontTag, int>;
+using FontVariation = std::pair<FontTag, float>;
+
+using FontFeatureList = std::forward_list<FontFeature>;
+using FontVariationList = std::forward_list<FontVariation>;
+
+constexpr FontSelectionValue kMediumFontSize = 16.f;
+
+struct FontDataDescription {
+    FontSelectionValue size = kMediumFontSize;
+    FontSelectionRequest request;
+    FontVariationList variations;
+    GlobalString lang;
+};
+
+constexpr bool operator==(const FontDataDescription& a, const FontDataDescription& b)
+{
+    return std::tie(a.size, a.request, a.variations, a.lang) == std::tie(b.size, b.request, b.variations, b.lang);
+}
+
+constexpr bool operator<(const FontDataDescription& a, const FontDataDescription& b)
+{
+    return std::tie(a.size, a.request, a.variations, a.lang) < std::tie(b.size, b.request, b.variations, b.lang);
+}
+
+using FontFamilyList = std::forward_list<GlobalString>;
+
+struct FontDescription {
+    FontFamilyList families;
+    FontDataDescription data;
+};
+
+constexpr bool operator==(const FontDescription& a, const FontDescription& b)
+{
+    return std::tie(a.families, a.data) == std::tie(b.families, b.data);
+}
+
+constexpr bool operator<(const FontDescription& a, const FontDescription& b)
+{
+    return std::tie(a.families, a.data) < std::tie(b.families, b.data);
+}
+
+using UnicodeRange = std::pair<uint32_t, uint32_t>;
+using UnicodeRangeList = std::forward_list<UnicodeRange>;
+
+using FontFaceSource = std::variant<Url, GlobalString>;
+using FontFaceSourceList = std::forward_list<FontFaceSource>;
+
+class FontData;
+
+class SimpleFontFace : public RefCounted<SimpleFontFace> {
+public:
+    static RefPtr<SimpleFontFace> create(FontFeatureList features, FontVariationList variations, UnicodeRangeList ranges, FontFaceSourceList sources);
+
+    RefPtr<FontData> getFontData(Document* document, const FontDataDescription& description, bool syntheticOblique);
+
+    const FontFeatureList& features() const { return m_features; }
+    const FontVariationList& variations() const { return m_variations; }
+    const UnicodeRangeList& ranges() const { return m_ranges; }
+    const FontFaceSourceList& sources() const { return m_sources; }
+
+private:
+    SimpleFontFace(FontFeatureList features, FontVariationList variations, UnicodeRangeList ranges, FontFaceSourceList sources)
+        : m_features(std::move(features))
+        , m_variations(std::move(variations))
+        , m_ranges(std::move(ranges))
+        , m_sources(std::move(sources))
+    {}
+
+    FontFeatureList m_features;
+    FontVariationList m_variations;
+    UnicodeRangeList m_ranges;
+    FontFaceSourceList m_sources;
+    RefPtr<FontResource> m_resource;
+};
+
+inline RefPtr<SimpleFontFace> SimpleFontFace::create(FontFeatureList features, FontVariationList variations, UnicodeRangeList ranges, FontFaceSourceList sources)
+{
+    return adoptPtr(new SimpleFontFace(std::move(features), std::move(variations), std::move(ranges), std::move(sources)));
+}
+
+class SegmentedFontData;
+
+class SegmentedFontFace : public RefCounted<SegmentedFontFace> {
+public:
+    static RefPtr<SegmentedFontFace> create(const FontSelectionDescription& description);
+
+    const FontSelectionDescription& description() const { return m_description; }
+    RefPtr<FontData> getFontData(Document* document, const FontDataDescription& description);
+    void add(RefPtr<SimpleFontFace> face) { m_faces.push_back(std::move(face)); }
+
+private:
+    SegmentedFontFace(const FontSelectionDescription& description) : m_description(description) {}
+    FontSelectionDescription m_description;
+    std::vector<RefPtr<SimpleFontFace>> m_faces;
+    std::map<FontDataDescription, RefPtr<SegmentedFontData>> m_table;
+};
+
+inline RefPtr<SegmentedFontFace> SegmentedFontFace::create(const FontSelectionDescription& description)
+{
+    return adoptPtr(new SegmentedFontFace(description));
+}
+
+enum class EmojiPolicy : uint8_t {
+    NoPreference,
+    RequireText,
+    RequireEmoji
+};
+
+class SimpleFontData;
+
+class FontData : public RefCounted<FontData> {
+public:
+    virtual ~FontData() = default;
+    virtual const SimpleFontData* fontDataForCharacter(uint32_t codepoint, EmojiPolicy emojiPolicy) const = 0;
+
+    const SimpleFontData* fontDataForCharacters(const uint16_t* characters, int length, EmojiPolicy emojiPolicy) const;
+
+protected:
+    FontData() = default;
+};
+
+using FontDataList = std::pmr::vector<RefPtr<FontData>>;
+
+struct FontDataInfo {
+    float ascent;
+    float descent;
+    float lineHeight;
+    float xHeight;
+    float capHeight;
+    float zeroWidth;
+    float spaceWidth;
+    float ideogramWidth;
+    uint16_t zeroGlyph;
+    uint16_t spaceGlyph;
+    uint16_t ideogramGlyph;
+    bool hasKerning;
+    bool hasColor;
+};
+
+class SimpleFontData final : public FontData {
+public:
+    static RefPtr<SimpleFontData> create(cairo_scaled_font_t* font, FcCharSet* charSet, FontFeatureList features);
+
+    cairo_scaled_font_t* font() const { return m_font; }
+    hb_font_t* hbFont() const { return m_hbFont; }
+    const FontDataInfo& info() const { return m_info; }
+    const FontFeatureList& features() const { return m_features; }
+
+    const SimpleFontData* fontDataForCharacter(uint32_t codepoint, EmojiPolicy emojiPolicy) const final;
+
+    float ascent() const { return m_info.ascent; }
+    float descent() const { return m_info.descent; }
+    float height() const { return m_info.ascent + m_info.descent; }
+    float lineHeight() const { return m_info.lineHeight; }
+    float xHeight() const { return m_info.xHeight; }
+    float capHeight() const { return m_info.capHeight; }
+    float zeroWidth() const { return m_info.zeroWidth; }
+    float spaceWidth() const { return m_info.spaceWidth; }
+    float ideogramWidth() const { return m_info.ideogramWidth; }
+    uint16_t zeroGlyph() const { return m_info.zeroGlyph; }
+    uint16_t spaceGlyph() const { return m_info.spaceGlyph; }
+
+    ~SimpleFontData() final;
+
+private:
+    SimpleFontData(cairo_scaled_font_t* font, hb_font_t* hbFont, FcCharSet* charSet, const FontDataInfo& info, FontFeatureList features)
+        : m_font(font), m_hbFont(hbFont), m_charSet(charSet), m_info(info), m_features(std::move(features))
+    {}
+
+    cairo_scaled_font_t* m_font;
+    hb_font_t* m_hbFont;
+    FcCharSet* m_charSet;
+    FontDataInfo m_info;
+    FontFeatureList m_features;
+};
+
+class FontDataRange {
+public:
+    FontDataRange(uint32_t from, uint32_t to, RefPtr<FontData> data)
+        : m_from(from), m_to(to), m_data(std::move(data))
+    {}
+
+    const SimpleFontData* fontDataForCharacter(uint32_t codepoint, EmojiPolicy emojiPolicy) const;
+
+private:
+    uint32_t m_from;
+    uint32_t m_to;
+    RefPtr<FontData> m_data;
+};
+
+using FontDataRangeList = std::forward_list<FontDataRange>;
+
+class SegmentedFontData final : public FontData {
+public:
+    static RefPtr<SegmentedFontData> create(FontDataRangeList fonts);
+
+    const SimpleFontData* fontDataForCharacter(uint32_t codepoint, EmojiPolicy emojiPolicy) const final;
+
+private:
+    SegmentedFontData(FontDataRangeList fonts) : m_fonts(std::move(fonts)) {}
+    FontDataRangeList m_fonts;
+};
+
+inline RefPtr<SegmentedFontData> SegmentedFontData::create(FontDataRangeList fonts)
+{
+    return adoptPtr(new SegmentedFontData(std::move(fonts)));
+}
+
+class FontDataCache {
+public:
+    RefPtr<SimpleFontData> fontDataForFamily(const GlobalString& family, const FontDataDescription& description);
+    RefPtr<SimpleFontData> fontDataForCharacters(const uint16_t* characters, int length, EmojiPolicy emojiPolicy, const FontDataDescription& description);
+
+    bool isFamilyAvailable(const GlobalString& family);
+
+    ~FontDataCache();
+
+private:
+    FontDataCache();
+    FcConfig* m_config;
+    std::mutex m_mutex;
+    std::map<GlobalString, std::map<FontDataDescription, RefPtr<SimpleFontData>>> m_table;
+    friend FontDataCache* fontDataCache();
+};
+
+FontDataCache* fontDataCache();
+
+class LocaleData;
+
+class Font : public HeapMember, public RefCounted<Font> {
+public:
+    static RefPtr<Font> create(Document* document, const FontDescription& description);
+
+    Heap* heap() const;
+    Document* document() const { return m_document; }
+    const FontDescription& description() const { return m_description; }
+    const FontDataList& fonts() const { return m_fonts; }
+    const SimpleFontData* primaryFont() const { return m_primaryFont; }
+    const LocaleData* locale() const;
+
+    float size() const { return m_description.data.size; }
+    float weight() const { return m_description.data.request.weight; }
+    float stretch() const { return m_description.data.request.width; }
+    float style() const { return m_description.data.request.slope; }
+
+    const FontFamilyList& family() const { return m_description.families; }
+    const FontVariationList& variationSettings() const { return m_description.data.variations; }
+    const GlobalString& lang() const { return m_description.data.lang; }
+
+    const SimpleFontData* fontDataForCharacters(const uint16_t* characters, int length, EmojiPolicy emojiPolicy) const;
+
+private:
+    Font(Document* document, const FontDescription& description);
+    Document* m_document;
+    FontDescription m_description;
+    mutable FontDataList m_fonts;
+    const SimpleFontData* m_primaryFont{nullptr};
+    mutable const LocaleData* m_locale{nullptr};
+};
+
+} // namespace plutobook
+
+#endif // PLUTOBOOK_FONTRESOURCE_H

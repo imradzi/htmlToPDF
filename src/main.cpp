@@ -1,12 +1,22 @@
 #include "template_engine.h"
 #include "pdf_generator.h"
 #include <iostream>
+#include <string>
+
+// The standalone tool links PdfGenerator without the application's version.cpp;
+// provide the symbol used by the PDF footer.
+std::string GetVersionNo() { return "standalone"; }
 
 int main(int argc, char* argv[]) {
     std::cout << "Handlebars Template to PDF Generator\n";
     std::cout << "=====================================\n\n";
     
     PdfGenerator generator;
+
+    if (!PdfGenerator::initLibrary()) {
+        std::cerr << "Failed to initialize the PDF engine\n";
+        return 1;
+    }
     
     // Example 1: Generate an invoice PDF with line items
     {

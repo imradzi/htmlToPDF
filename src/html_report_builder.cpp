@@ -156,8 +156,28 @@ TemplateContext HtmlReportBuilder::buildContext() const {
 }
 
 std::string HtmlReportBuilder::renderHtml() const {
+    return renderHtmlImpl(0, sections_.size());
+}
+
+std::string HtmlReportBuilder::renderSectionHtml(size_t sectionIndex) const {
+    if (sectionIndex >= sections_.size()) return {};
+    return renderHtmlImpl(sectionIndex, sectionIndex + 1);
+}
+
+std::string HtmlReportBuilder::renderHtmlImpl(size_t firstSection, size_t lastSection) const {
     // Since TemplateEngine doesn't support nested {{#each}} blocks,
     // we build the HTML directly for maximum flexibility.
+
+    auto now = std::chrono::system_clock::now();
+    auto nowTime = std::chrono::system_clock::to_time_t(now);
+    std::tm localTime{};
+#ifdef _WIN32
+    localtime_s(&localTime, &nowTime);
+#else
+    localtime_r(&nowTime, &localTime);
+#endif
+    std::ostringstream headerDate;
+    headerDate << std::put_time(&localTime, "%d-%m-%Y %H:%M");
 
     std::ostringstream html;
     html << R"(<!DOCTYPE html>
@@ -165,10 +185,7 @@ std::string HtmlReportBuilder::renderHtml() const {
 <head>
 <meta charset="UTF-8">
 <style>
-    @page {
-        size: )" << (isLandscape() ? "A4 landscape" : "A4") << R"(;
-        margin: 10mm 10mm 15mm 10mm;
-    }
+    /* Page size and margins are supplied by PdfGenerator (PdfSettings). */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
         font-family: Arial, sans-serif;
@@ -235,7 +252,17 @@ std::string HtmlReportBuilder::renderHtml() const {
     td.sub-table-cell {
         padding: 0;
     }
-    .section-break { page-break-before: always; }
+    .section-break { page-break-before: always; break-before: page; }
+    .po-header {
+        font-family: Arial, sans-serif;
+        font-size: 10pt;
+    }
+    .po-header .row { overflow: hidden; }
+    .po-header .left { float: left; }
+    .po-header .right { float: right; white-space: nowrap; }
+    .po-header .title { clear: both; font-size: 9pt; margin-top: 2px; }
+    .po-header .subtitle { clear: both; font-size: 8pt; }
+    .po-header .section { clear: both; font-size: 8pt; margin-top: 3px; overflow-wrap: break-word; }
     .page-title {
         font-size: )" << fontSize_.label << R"(pt;
         font-weight: bold;
@@ -270,6 +297,42 @@ std::string HtmlReportBuilder::renderHtml() const {
 <body>
 )";
 
+    auto escapeHtml = [](const std::string& text) {
+        std::string out;
+        out.reserve(text.size());
+        for (char c : text) {
+            switch (c) {
+                case '&': out += "&amp;"; break;
+                case '<': out += "&lt;"; break;
+                case '>': out += "&gt;"; break;
+                case '"': out += "&quot;"; break;
+                default: out += c;
+            }
+        }
+        return out;
+    };
+
+    // PlutoBook replaces wkhtmltopdf's [section]/[subsection] tokens with CSS
+    // running elements. They are taken out of the normal flow and rendered in
+    // the @top-center / @bottom-center page margin boxes (see PdfGenerator).
+    auto appendRunningHeader = [&](const std::string& sectionTitle) {
+        html << "<div class=\"po-header\" style=\"position: running(page-header);\">\n";
+        html << "  <div class=\"row\"><div class=\"left\">" << escapeHtml(outletName_)
+             << "</div><div class=\"right\">" << escapeHtml(headerDate.str()) << "</div></div>\n";
+        if (!title_.empty())
+            html << "  <div class=\"title\">" << escapeHtml(title_) << "</div>\n";
+        if (!subtitle_.empty())
+            html << "  <div class=\"subtitle\">" << escapeHtml(subtitle_) << "</div>\n";
+        if (!sectionTitle.empty())
+            html << "  <div class=\"section\">" << escapeHtml(sectionTitle) << "</div>\n";
+        html << "</div>\n";
+    };
+
+    auto appendRunningFooter = [&](const std::string& total) {
+        html << "<div class=\"po-footer\" style=\"position: running(page-footer);\">"
+             << escapeHtml(total) << "</div>\n";
+    };
+
     // Compute column widths as percentages. Columns may change between sections
     // (reports can have several result sets with different column layouts), so
     // widths are computed from each section's own column definitions below.
@@ -287,14 +350,16 @@ std::string HtmlReportBuilder::renderHtml() const {
     };
 
     if (noData_ && sections_.empty()) {
+        appendRunningHeader(std::string());
         html << R"(<div style="text-align:center; margin-top: 40mm;">
     <p style="font-size: 12pt;">No Data for:</p>
     <p style="font-size: 12pt; margin-top: 10mm;">)" << noDataText_ << R"(</p>
 </div>
 )";
+        appendRunningFooter(std::string());
     }
 
-    for (size_t si = 0; si < sections_.size(); ++si) {
+    for (size_t si = firstSection; si < lastSection; ++si) {
         const auto& sec = sections_[si];
         // Use the section's own column layout (falls back to the builder's
         // current columns for sections created before any columns were defined).
@@ -304,40 +369,39 @@ std::string HtmlReportBuilder::renderHtml() const {
         // hidden as the page-title column); a later result set without @break-page
         // must not unhide it.
         int startOfs = sec.breakPage ? 1 : 0;
-        html << "<div" << (si > 0 ? " class=\"section-break\"" : "") << ">\n";
-
-        // Section title as h1 for wkhtmltopdf [section] token (hidden in body, shown in header)
-        if (!sec.pageTitle.empty()) {
-            // URL-decode any percent-encoded chars (e.g. %26 → &) then replace & with safe placeholder
-            std::string safeTitle;
-            safeTitle.reserve(sec.pageTitle.size());
-            for (size_t i = 0; i < sec.pageTitle.size(); ++i) {
-                if (sec.pageTitle[i] == '%' && i + 2 < sec.pageTitle.size()
-                    && std::isxdigit(static_cast<unsigned char>(sec.pageTitle[i+1]))
-                    && std::isxdigit(static_cast<unsigned char>(sec.pageTitle[i+2]))) {
-                    char hex[3] = {sec.pageTitle[i+1], sec.pageTitle[i+2], '\0'};
-                    safeTitle += static_cast<char>(std::strtol(hex, nullptr, 16));
+        // Emit this section's running header/footer BEFORE the page break so
+        // the new values are already active on the page that starts the section.
+        std::string sectionTitle = sec.pageTitle;
+        {
+            std::string decoded;
+            decoded.reserve(sectionTitle.size());
+            for (size_t i = 0; i < sectionTitle.size(); ++i) {
+                if (sectionTitle[i] == '%' && i + 2 < sectionTitle.size()
+                    && std::isxdigit(static_cast<unsigned char>(sectionTitle[i+1]))
+                    && std::isxdigit(static_cast<unsigned char>(sectionTitle[i+2]))) {
+                    char hex[3] = {sectionTitle[i+1], sectionTitle[i+2], '\0'};
+                    decoded += static_cast<char>(std::strtol(hex, nullptr, 16));
                     i += 2;
                 } else {
-                    safeTitle += sec.pageTitle[i];
+                    decoded += sectionTitle[i];
                 }
             }
-            html << "  <h1 style=\"position:absolute;left:-9999px\">" << safeTitle << "</h1>\n";
+            sectionTitle = std::move(decoded);
         }
+        appendRunningHeader(sectionTitle);
 
-        // Hidden h2 with page total for wkhtmltopdf [subsection] footer token
+        std::string pageTotalStr;
         if (sec.hasPageTotal) {
-            std::string pageTotalStr;
             for (size_t ci = 0; ci < cols.size() && ci < sec.pageTotalCells.size(); ++ci) {
                 if (!sec.pageTotalCells[ci].empty()) {
                     if (!pageTotalStr.empty()) pageTotalStr += " ";
                     pageTotalStr += sec.pageTotalCells[ci];
                 }
             }
-            if (!pageTotalStr.empty()) {
-                html << "  <h2 style=\"visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;font-size:0;line-height:0\">" << pageTotalStr << "</h2>\n";
-            }
         }
+        appendRunningFooter(pageTotalStr);
+
+        html << "<div" << (si > firstSection ? " class=\"section-break\"" : "") << ">\n";
 
         // Table
         html << "  <table>\n    <thead><tr>\n";
@@ -433,50 +497,3 @@ std::string HtmlReportBuilder::renderHtml() const {
     return html.str();
 }
 
-bool HtmlReportBuilder::generatePdf(const std::string& outputPath) const {
-    std::string htmlContent = renderHtml();
-
-    // Format current date & time for header right
-    auto now = std::chrono::system_clock::now();
-    auto t = std::chrono::system_clock::to_time_t(now);
-    std::ostringstream dateTimeStr;
-    dateTimeStr << std::put_time(std::localtime(&t), "%d-%m-%Y %H:%M");
-
-    htmlToPDF::PdfGenerator::PdfSettings settings;
-    settings.orientation = isLandscape() ? "Landscape" : "Portrait";
-    settings.pageSize = "A4";
-    settings.marginTop = 25;   // room for multi-line header (outlet/date + title + subtitle + section)
-    settings.marginBottom = 10;
-    settings.marginLeft = 10;
-    settings.marginRight = 10;
-    settings.headerLeft = outletName_;
-    settings.headerCenter = "[section]";
-    settings.headerRight = dateTimeStr.str();
-    settings.headerTitle = title_;
-    settings.headerSubtitle = subtitle_;
-    settings.headerFontSize = "10";
-    settings.footerCenter = "[subsection]";
-
-    htmlToPDF::PdfGeneratorProxy proxy;
-    return proxy.generateFromHtml(htmlContent, outputPath, settings);
-}
-
-bool HtmlReportBuilder::saveAsFile(const std::wstring& filePath) const {
-    // Convert wstring path to string (UTF-8)
-    std::string path;
-    for (auto c : filePath) {
-        if (c < 128) path += static_cast<char>(c);
-        else {
-            // Simple UTF-8 encoding for non-ASCII
-            if (c < 0x800) {
-                path += static_cast<char>(0xC0 | (c >> 6));
-                path += static_cast<char>(0x80 | (c & 0x3F));
-            } else {
-                path += static_cast<char>(0xE0 | (c >> 12));
-                path += static_cast<char>(0x80 | ((c >> 6) & 0x3F));
-                path += static_cast<char>(0x80 | (c & 0x3F));
-            }
-        }
-    }
-    return generatePdf(path);
-}

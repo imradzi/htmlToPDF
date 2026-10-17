@@ -6,163 +6,262 @@
 #endif
 
 #include "pdf_generator.h"
-#include <wkhtmltox/pdf.h>
+#include <plutobook.hpp>
 #include <fstream>
 #include <sstream>
 #include <cstring>
 #include <cstdio>
-#include <boost/filesystem.hpp>
+#include <cmath>
+#include <algorithm>
+#include <cctype>
+#include <filesystem>
+#include <memory>
 #include "logging.hpp"
-#include "global.h"
 #include "fmt/format.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 wxDEFINE_EVENT(wpEVT_PDF_GENERATE, wxCommandEvent);
 extern std::string GetVersionNo();
 
 namespace htmlToPDF {
 
+namespace {
 
-wxEvtHandler* PdfGeneratorProxy::eventHandler_ = nullptr;
-PdfGenerator PdfGeneratorProxy::generator_;
+constexpr double kMmToPt = 72.0 / 25.4;
 
-PdfGeneratorProxy::PdfGeneratorProxy() : config_() {}
+double MmToPt(double mm) { return mm * kMmToPt; }
 
-PdfGeneratorProxy::PdfGeneratorProxy(const PdfConfig& config) : config_(config) {}
-
-void PdfGeneratorProxy::SetEventHandler(wxEvtHandler* handler) {eventHandler_ = handler;}
-
-bool PdfGeneratorProxy::generateFromHtml(const std::string& htmlContent, const std::string& outputPath, const PdfGenerator::PdfSettings& settings) {
-    PdfGenerateRequest request;
-    request.type = PdfGenerateRequest::RequestType::GenerateFromHtml;
-    request.htmlContent = htmlContent;
-    request.outputPath = outputPath;
-    request.settings = settings;
-    
-    auto result = executeOnMainThread(request);
-    return result.success;
+std::string ToLower(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return value;
 }
 
-bool PdfGeneratorProxy::generateMultiPagePdf(const std::vector<std::string>& htmlPages, const std::string& outputPath, const PdfGenerator::PdfSettings& settings) {
-    PdfGenerateRequest request;
-    request.type = PdfGenerateRequest::RequestType::GenerateMultiPage;
-    request.htmlPages = htmlPages;
-    request.outputPath = outputPath;
-    request.settings = settings;
-    
-    auto result = executeOnMainThread(request);
-    return result.success;
+std::string Trim(const std::string& value) {
+    const auto first = value.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos) return {};
+    const auto last = value.find_last_not_of(" \t\r\n");
+    return value.substr(first, last - first + 1);
 }
 
-bool PdfGeneratorProxy::generateToBuffer(const std::string& htmlContent, std::string& outputBuffer) {
-    PdfGenerateRequest request;
-    request.type = PdfGenerateRequest::RequestType::GenerateToBuffer;
-    request.htmlContent = htmlContent;
-    request.outputBuffer = &outputBuffer;
-    
-    auto result = executeOnMainThread(request);
-    return result.success;
+plutobook::PageSize ResolvePageSize(const std::string& name) {
+    const std::string n = ToLower(Trim(name));
+    if (n == "a3") return plutobook::PageSize::A3;
+    if (n == "a5") return plutobook::PageSize::A5;
+    if (n == "b4") return plutobook::PageSize::B4;
+    if (n == "b5") return plutobook::PageSize::B5;
+    if (n == "letter") return plutobook::PageSize::Letter;
+    if (n == "legal") return plutobook::PageSize::Legal;
+    if (n == "ledger") return plutobook::PageSize::Ledger;
+    return plutobook::PageSize::A4;
 }
 
-using CallBackFunction = std::function<void(PdfGenerateResult&&)>;
-struct EventData {
-    PdfGenerateRequest request;
-    CallBackFunction callback;
-};
-
-PdfGenerateResult PdfGeneratorProxy::executeOnMainThread(const PdfGenerateRequest& request) {
-    if (eventHandler_ == nullptr) {
-        LOG_ERROR("PdfGeneratorProxy: Event handler not set");
-        return PdfGenerateResult{ false, "Event handler not set" };
-    }
-    PdfGenerateResult result;
-    result.success = false;
-
-    LOG_INFO("PdfGeneratorProxy: executeOnMainThread called");
-   
-    // We're on a worker thread - send event to main thread and wait
-    std::mutex completionMutex;
-    std::condition_variable completionCV;
-    bool completed = false;
-  
-    EventData evData { request, [&completionMutex, &completionCV, &completed, &result](PdfGenerateResult &&res) {
-        LOG_INFO("PdfGeneratorProxy: PDF generation callback called");
-        std::lock_guard<std::mutex> lock(completionMutex);
-        result = std::move(res);
-        completed = true;
-        completionCV.notify_one();
-    }};
-
-    wxCommandEvent event(wpEVT_PDF_GENERATE);
-    event.SetClientData(&evData);
-
-    // Send event to main thread
-    LOG_INFO("PdfGeneratorProxy: Posting event to main thread");
-    eventHandler_->QueueEvent(event.Clone());
-
-    std::unique_lock<std::mutex> lock(completionMutex);
-
-    // Wait for completion
-    LOG_INFO("PdfGeneratorProxy: Waiting for PDF generation to complete");
-    completionCV.wait(lock, [&completed]() { return completed || global::g.isAppShuttingDown.load(); });
-
-    if (completed) LOG_INFO("PdfGeneratorProxy: PDF generation completed");
-    else LOG_ERROR("PdfGeneratorProxy: PDF generation interrupted due to shutdown");
-    return result;
+bool IsLandscape(const std::string& orientation) {
+    const std::string o = ToLower(Trim(orientation));
+    return o == "landscape" || o == "l";
 }
 
-void PdfGeneratorProxy::OnEvent(wxCommandEvent& event) {
-    LOG_INFO("PdfGeneratorProxy: OnEvent called on main thread");
-    auto p = static_cast<EventData *>(event.GetClientData());
-    if (p == nullptr) {
-        LOG_ERROR("PdfGeneratorProxy: Invalid event client data");
-        return;
-    }
+// Parse a CSS-ish length ("20mm", "1.5cm", "0.5in", "12pt", "px") into points.
+double ParseLengthToPoints(const std::string& value, double fallbackPoints) {
+    const std::string text = Trim(value);
+    if (text.empty()) return fallbackPoints;
 
-    auto& request = p->request;
-    PdfGenerateResult result;
-   
-    try {
-        switch (request.type) {
-            case PdfGenerateRequest::RequestType::GenerateFromHtml:
-            LOG_INFO("PdfGeneratorProxy: Generating PDF from HTML");
-                result.success = generator_.generateFromHtml(request.htmlContent, request.outputPath, request.settings);
-                break;
-                
-            case PdfGenerateRequest::RequestType::GenerateMultiPage:
-                LOG_INFO("PdfGeneratorProxy: Generating PDF from multiple HTML pages");
-                result.success = generator_.generateMultiPagePdf(request.htmlPages,request.outputPath,request.settings);
-                break;
-                
-            case PdfGenerateRequest::RequestType::GenerateToBuffer:
-                LOG_INFO("PdfGeneratorProxy: Generating PDF to memory buffer");
-                if (request.outputBuffer) {
-                    result.success = generator_.generateToBuffer(request.htmlContent, *const_cast<std::string*>(request.outputBuffer));
-                } else {
-                    result.success = false;
-                    result.errorMessage = "Output buffer is null";
-                }
+    char* end = nullptr;
+    const double number = std::strtod(text.c_str(), &end);
+    if (end == text.c_str()) return fallbackPoints;
+
+    const std::string unit = ToLower(Trim(std::string(end)));
+    if (unit == "mm") return MmToPt(number);
+    if (unit == "cm") return number * 72.0 / 2.54;
+    if (unit == "in") return number * 72.0;
+    if (unit == "px") return number * 72.0 / 96.0;
+    if (unit == "pc") return number * 12.0;
+    return number;  // pt or unitless
+}
+
+// Escape a value for use inside a CSS double-quoted string.
+std::string CssString(const std::string& value) {
+    std::string out;
+    out.reserve(value.size() + 8);
+    for (unsigned char c : value) {
+        switch (c) {
+            case '\\': out += "\\\\"; break;
+            case '"': out += "\\\""; break;
+            case '\n': out += "\\A "; break;
+            case '\r': break;
+            case '\t': out += ' '; break;
+            default:
+                if (c < 0x20) out += ' ';
+                else out += static_cast<char>(c);
                 break;
         }
-    } catch (const std::exception& e) {
-        result.success = false;
-        result.errorMessage = e.what();
-        LOG_ERROR("PdfGeneratorProxy: Exception during PDF generation: {}", e.what());
     }
-    auto completionCallBack = p->callback;
-    if (completionCallBack) completionCallBack(std::move(result));
+    return out;
 }
 
-// Callback functions for wkhtmltopdf error/warning reporting
-static void pdfErrorCallback(wkhtmltopdf_converter* /*converter*/, const char* msg) {
-    if (msg) {
-        LOG_ERROR("wkhtmltopdf: {}", msg);
-    }
+std::string MarginBoxRule(const char* box, const std::string& text, const std::string& fontSize) {
+    if (text.empty()) return {};
+    const std::string size = fontSize.empty() ? "8" : fontSize;
+    return fmt::format("  @{} {{ content: \"{}\"; font-size: {}pt; white-space: pre-line; }}\n",
+                       box, CssString(text), size);
 }
 
-static void pdfWarningCallback(wkhtmltopdf_converter* /*converter*/, const char* msg) {
-    if (msg) {
-        LOG_WARN("wkhtmltopdf: {}", msg);
+// Builds the @page rule that replaces wkhtmltopdf's header.* / footer.* settings.
+// "[section]" and "[subsection]" are markers used by HtmlReportBuilder: the actual
+// content is supplied by CSS running elements embedded in the report HTML.
+std::string BuildPageStyle(const PdfGenerator::PdfSettings& settings,
+                           uint32_t pageOffset = 0, uint32_t totalPages = 0) {
+    const bool runningHeader = settings.headerCenter == "[section]";
+    const bool runningFooter = settings.footerCenter == "[subsection]";
+
+    plutobook::PageSize pageSize = ResolvePageSize(settings.pageSize);
+    if (IsLandscape(settings.orientation)) pageSize = pageSize.landscape();
+
+    std::string css;
+    css.reserve(1024);
+
+    // Templates size their full-page containers from these variables instead of
+    // hard-coding 287mm, so the content area always matches the real page margins.
+    css += fmt::format(
+        ":root {{\n"
+        "  --ppos-page-width: {:.3f}mm;\n"
+        "  --ppos-page-height: {:.3f}mm;\n"
+        "  --ppos-margin-top: {}mm;\n"
+        "  --ppos-margin-bottom: {}mm;\n"
+        "  --ppos-margin-left: {}mm;\n"
+        "  --ppos-margin-right: {}mm;\n"
+        "}}\n",
+        pageSize.width() / kMmToPt, pageSize.height() / kMmToPt,
+        settings.marginTop, settings.marginBottom, settings.marginLeft, settings.marginRight);
+
+    if (totalPages > 0) {
+        // Continue numbering across documents: reset only on this document's
+        // first page, then let the page counter increment normally.
+        css += fmt::format("  @page :nth(1) {{ counter-reset: page {}; counter-increment: page 1; }}\n",
+                           pageOffset);
     }
+
+    css += "@page {\n";
+
+    if (runningHeader) {
+        css += "  @top-center { content: element(page-header); width: 100%; vertical-align: top; }\n";
+    } else {
+        css += MarginBoxRule("top-left", settings.headerLeft, settings.headerFontSize);
+
+        std::string center = settings.headerCenter;
+        auto appendLine = [&center](const std::string& line) {
+            if (line.empty()) return;
+            if (!center.empty()) center += '\n';
+            center += line;
+        };
+        appendLine(settings.headerTitle);
+        appendLine(settings.headerSubtitle);
+        css += MarginBoxRule("top-center", center, settings.headerFontSize);
+        css += MarginBoxRule("top-right", settings.headerRight, settings.headerFontSize);
+    }
+
+    if (runningFooter) {
+        const std::string size = settings.footerFontSize.empty() ? "4" : settings.footerFontSize;
+        css += fmt::format("  @bottom-center {{ content: element(page-footer); font-size: {}pt; }}\n", size);
+    } else {
+        css += MarginBoxRule("bottom-center", settings.footerCenter, settings.footerFontSize);
+    }
+
+    css += MarginBoxRule("bottom-left", fmt::format("ppos {}", GetVersionNo()), settings.footerFontSize);
+    const std::string footerSize = settings.footerFontSize.empty() ? "4" : settings.footerFontSize;
+    if (totalPages > 0) {
+        css += fmt::format("  @bottom-right {{ content: \"Page \" counter(page) \" of {}\"; "
+                           "font-size: {}pt; }}\n", totalPages, footerSize);
+    } else {
+        css += fmt::format("  @bottom-right {{ content: \"Page \" counter(page) \" of \" counter(pages); "
+                           "font-size: {}pt; }}\n", footerSize);
+    }
+    css += "}\n";
+    return css;
 }
+
+class StringOutputStream final : public plutobook::OutputStream {
+public:
+    explicit StringOutputStream(std::string& output) : output_(output) {}
+
+    bool write(const char* data, size_t length) override {
+        output_.append(data, length);
+        return true;
+    }
+
+private:
+    std::string& output_;
+};
+
+plutobook::PageSize ResolveBookPageSize(const PdfGenerator::PdfSettings& settings) {
+    plutobook::PageSize pageSize = ResolvePageSize(settings.pageSize);
+    return IsLandscape(settings.orientation) ? pageSize.landscape() : pageSize;
+}
+
+plutobook::PageMargins ResolveMargins(const PdfGenerator::PdfSettings& settings) {
+    return plutobook::PageMargins(MmToPt(settings.marginTop), MmToPt(settings.marginRight),
+                                  MmToPt(settings.marginBottom), MmToPt(settings.marginLeft));
+}
+
+std::string MakeFileUrl(const std::filesystem::path& path) {
+    const std::string generic = path.generic_string();
+#ifdef _WIN32
+    return "file:///" + generic;
+#else
+    return "file://" + generic;
+#endif
+}
+
+// wkhtmltopdf resolved relative resources against the process working
+// directory; keep that behaviour when no explicit base URL is supplied.
+std::string ResolveBaseUrl(const PdfGenerator::PdfSettings& settings) {
+    if (!settings.baseUrl.empty()) return settings.baseUrl;
+
+    std::error_code ec;
+    const auto cwd = std::filesystem::current_path(ec);
+    if (ec) return {};
+
+    std::string baseUrl = MakeFileUrl(cwd);
+    if (!baseUrl.empty() && baseUrl.back() != '/') baseUrl += '/';
+    return baseUrl;
+}
+
+bool ConvertToPdf(const std::string& htmlContent, const std::string& outputPath,
+                  std::string* outputBuffer, const PdfGenerator::PdfSettings& settings) {
+    plutobook::Book book(ResolveBookPageSize(settings), ResolveMargins(settings),
+                         plutobook::MediaType::Print);
+
+    const std::string baseUrl = ResolveBaseUrl(settings);
+    const std::string userStyle = BuildPageStyle(settings);
+    if (!book.loadHtml(htmlContent, userStyle, {}, baseUrl)) {
+        LOG_ERROR("PlutoBook: failed to load HTML document");
+        return false;
+    }
+
+    bool success = false;
+    if (outputBuffer != nullptr) {
+        outputBuffer->clear();
+        StringOutputStream stream(*outputBuffer);
+        success = book.writeToPdf(stream);
+    } else if (!outputPath.empty()) {
+        success = book.writeToPdf(outputPath);
+    } else {
+        LOG_ERROR("PlutoBook: no output path or buffer provided");
+        return false;
+    }
+
+    if (!success) {
+        LOG_ERROR("PlutoBook: PDF conversion failed");
+        return false;
+    }
+
+    LOG_INFO("PDF generated: {} ({} pages)", outputBuffer ? "<buffer>" : outputPath, book.pageCount());
+    return true;
+}
+
+} // namespace
+
 
 bool PdfGenerator::initialized_ = false;
 std::mutex PdfGenerator::mutex_;
@@ -173,24 +272,35 @@ PdfGenerator::PdfGenerator(const PdfConfig& config) : config_(config) {}
 
 PdfGenerator::~PdfGenerator() {}
 
-// Call this ONCE from main() before creating any threads
+// Call this ONCE from main() before creating any threads. PlutoBook has no
+// process-wide GUI initialization; on Windows this only points Fontconfig at
+// the config directory shipped next to the executable.
 bool PdfGenerator::initLibrary() {
     if (initialized_) return true;
-    if (wkhtmltopdf_init(0) != 1) {
-        LOG_ERROR("Failed to initialize wkhtmltopdf library");
-        return false;
+
+#ifdef _WIN32
+    wchar_t modulePath[MAX_PATH] = {};
+    if (GetModuleFileNameW(nullptr, modulePath, MAX_PATH) > 0) {
+        std::error_code ec;
+        const std::filesystem::path fontsDir =
+            std::filesystem::path(modulePath).parent_path() / "fonts";
+        if (std::filesystem::exists(fontsDir, ec)) {
+            plutobook_set_fontconfig_path(fontsDir.string().c_str());
+            LOG_INFO("PlutoBook: fontconfig path set to {}", fontsDir.string());
+        } else {
+            LOG_WARN("PlutoBook: fontconfig directory not found at {}", fontsDir.string());
+        }
     }
+#endif
+
     initialized_ = true;
-    LOG_INFO("wkhtmltopdf library initialized");
+    LOG_INFO("PlutoBook PDF engine initialized");
     return true;
 }
 
 // Call this at application shutdown (optional)
 void PdfGenerator::deinitLibrary() {
-    if (initialized_) {
-        wkhtmltopdf_deinit();
-        initialized_ = false;
-    }
+    initialized_ = false;
 }
 
 bool PdfGenerator::generate(const std::string& htmlContent, const std::string& outputPath) {
@@ -203,83 +313,87 @@ bool PdfGenerator::generateFromHtml(const std::string& htmlContent, const std::s
 
 bool PdfGenerator::generateMultiPagePdf(const std::vector<std::string>& htmlPages, const std::string& outputPath, const PdfSettings& settings) {
     if (htmlPages.empty()) return false;
-    
-    LOG_INFO("Generating multi-page PDF with {} pages", htmlPages.size());
+
+    LOG_INFO("Generating multi-page PDF with {} documents", htmlPages.size());
 
     std::lock_guard<std::mutex> lock(mutex_);
-    
+
     if (!initialized_) {
-        LOG_ERROR("wkhtmltopdf not initialized - call initLibrary() from main thread at startup");
+        LOG_ERROR("PlutoBook not initialized - call initLibrary() at startup");
         return false;
     }
-    
-    wkhtmltopdf_global_settings* gs = wkhtmltopdf_create_global_settings();
-    if (!gs) {
-        LOG_ERROR("Failed to create global settings");
+
+    std::vector<std::string> styles(htmlPages.size(), BuildPageStyle(settings));
+    const std::string baseUrl = ResolveBaseUrl(settings);
+
+    if (settings.continuePageNumbering) {
+        // First pass: paginate once to learn each document's page count.
+        std::vector<uint32_t> pageCounts(htmlPages.size(), 0);
+        uint32_t totalPages = 0;
+        for (size_t i = 0; i < htmlPages.size(); ++i) {
+            plutobook::Book book(ResolveBookPageSize(settings), ResolveMargins(settings),
+                                 plutobook::MediaType::Print);
+            if (!book.loadHtml(htmlPages[i], styles[i], {}, baseUrl)) {
+                LOG_ERROR("PlutoBook: failed to load one of the multi-page documents");
+                return false;
+            }
+            pageCounts[i] = book.pageCount();
+            totalPages += pageCounts[i];
+        }
+
+        // Second pass: give each document a page-counter offset so numbering
+        // continues across the whole report.
+        uint32_t offset = 0;
+        for (size_t i = 0; i < htmlPages.size(); ++i) {
+            styles[i] = BuildPageStyle(settings, offset, totalPages);
+            offset += pageCounts[i];
+        }
+    }
+
+    std::vector<std::unique_ptr<plutobook::Book>> books;
+    books.reserve(htmlPages.size());
+
+    for (size_t i = 0; i < htmlPages.size(); ++i) {
+        auto book = std::make_unique<plutobook::Book>(ResolveBookPageSize(settings),
+                                                      ResolveMargins(settings),
+                                                      plutobook::MediaType::Print);
+        if (!book->loadHtml(htmlPages[i], styles[i], {}, baseUrl)) {
+            LOG_ERROR("PlutoBook: failed to load one of the multi-page documents");
+            return false;
+        }
+        if (book->pageCount() == 0) continue;
+        books.push_back(std::move(book));
+    }
+
+    if (books.empty()) {
+        LOG_ERROR("PlutoBook: multi-page conversion produced no pages");
         return false;
     }
-    
-    wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
-    // Keep going if a page (e.g. header HTML) fails to load instead of
-    // aborting the whole conversion (EMFILE "Too many open files" safety net).
-    wkhtmltopdf_set_global_setting(gs, "load.loadErrorHandling", "ignore");
-    wkhtmltopdf_set_global_setting(gs, "size.pageSize", settings.pageSize.c_str());
-    wkhtmltopdf_set_global_setting(gs, "orientation", settings.orientation.c_str());
-    
-    std::string marginTop = std::to_string(settings.marginTop) + "mm";
-    std::string marginBottom = std::to_string(settings.marginBottom) + "mm";
-    std::string marginLeft = std::to_string(settings.marginLeft) + "mm";
-    std::string marginRight = std::to_string(settings.marginRight) + "mm";
-    
-    wkhtmltopdf_set_global_setting(gs, "margin.top", marginTop.c_str());
-    wkhtmltopdf_set_global_setting(gs, "margin.bottom", marginBottom.c_str());
-    wkhtmltopdf_set_global_setting(gs, "margin.left", marginLeft.c_str());
-    wkhtmltopdf_set_global_setting(gs, "margin.right", marginRight.c_str());
-    
-    wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);
-    if (!converter) {
-        LOG_ERROR("Failed to create PDF converter");
+
+    // Concatenate every document's pages onto a single PDF surface, preserving
+    // each document's own page size (portrait/landscape).
+    plutobook::PDFCanvas canvas(outputPath, books.front()->pageSizeAt(0));
+    if (canvas.isNull()) {
+        LOG_ERROR("PlutoBook: failed to create PDF canvas for {}", outputPath);
         return false;
     }
-    
-    wkhtmltopdf_set_error_callback(converter, pdfErrorCallback);
-    wkhtmltopdf_set_warning_callback(converter, pdfWarningCallback);
-    
-    for (const auto& html : htmlPages) {
-        wkhtmltopdf_object_settings* os = wkhtmltopdf_create_object_settings();
-        wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
-        wkhtmltopdf_set_object_setting(os, "footer.right", "Page [page] of [toPage]");
-        wkhtmltopdf_set_object_setting(os, "footer.left", fmt::format("ppos {}", GetVersionNo()).c_str());
-        if (!settings.footerCenter.empty())
-            wkhtmltopdf_set_object_setting(os, "footer.center", settings.footerCenter.c_str());
-        wkhtmltopdf_set_object_setting(os, "footer.fontSize", settings.footerFontSize.c_str());
-        if (!settings.headerLeft.empty()) {
-            wkhtmltopdf_set_object_setting(os, "header.left", settings.headerLeft.c_str());
+
+    // Match Book::writeToPdf: PlutoBook lays out in CSS pixels (96 dpi) while
+    // PDF pages are in points, so the canvas must be scaled before rendering.
+    canvas.scale(plutobook::units::px, plutobook::units::px);
+
+    for (auto& book : books) {
+        const uint32_t pageCount = book->pageCount();
+        for (uint32_t index = 0; index < pageCount; ++index) {
+            canvas.setPageSize(book->pageSizeAt(index));
+            book->renderPage(canvas, index);
+            canvas.showPage();
         }
-        if (!settings.headerCenter.empty()) {
-            wkhtmltopdf_set_object_setting(os, "header.center", settings.headerCenter.c_str());
-        }
-        if (!settings.headerRight.empty()) {
-            wkhtmltopdf_set_object_setting(os, "header.right", settings.headerRight.c_str());
-        }
-        wkhtmltopdf_set_object_setting(os, "header.fontSize", settings.headerFontSize.c_str());
-        wkhtmltopdf_set_object_setting(os, "header.fontName", "Arial");
-        wkhtmltopdf_set_object_setting(os, "header.spacing", "5");
-        wkhtmltopdf_set_object_setting(os, "header.line", "");
-        wkhtmltopdf_add_object(converter, os, html.c_str());
     }
-    
-    bool success = (wkhtmltopdf_convert(converter) == 1);
-    
-    if (!success) {
-        LOG_ERROR("Multi-page PDF conversion failed");
-    } else {
-        LOG_INFO("Multi-page PDF generated: {}", outputPath);
-    }
-    
-    wkhtmltopdf_destroy_converter(converter);
-    
-    return success;
+    canvas.finish();
+
+    LOG_INFO("Multi-page PDF generated: {} ({} documents)", outputPath, books.size());
+    return true;
 }
 
 bool PdfGenerator::generateFromFile(const std::string& htmlPath, const std::string& outputPath) {
@@ -300,250 +414,38 @@ bool PdfGenerator::generateToBuffer(const std::string& htmlContent, std::string&
 bool PdfGenerator::doConvert(const std::string& htmlContent, const std::string& outputPath,
                               std::string* outputBuffer) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
+
     if (!initialized_) {
-        LOG_ERROR("wkhtmltopdf not initialized - call initLibrary() from main thread at startup");
+        LOG_ERROR("PlutoBook not initialized - call initLibrary() at startup");
         return false;
-    }
-    
-    wkhtmltopdf_global_settings* gs = wkhtmltopdf_create_global_settings();
-    if (!gs) {
-        LOG_ERROR("Failed to create global settings");
-        return false;
-    }
-    
-    if (!outputPath.empty()) {
-        wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
     }
 
-    // Keep going if a page (e.g. header HTML) fails to load instead of
-    // aborting the whole conversion (EMFILE "Too many open files" safety net).
-    wkhtmltopdf_set_global_setting(gs, "load.loadErrorHandling", "ignore");
+    // Map the legacy PdfConfig (string lengths) onto PdfSettings (millimetres).
+    PdfSettings settings;
+    settings.pageSize = config_.pageSize;
+    settings.orientation = "Portrait";
+    settings.marginTop = static_cast<int>(std::lround(ParseLengthToPoints(config_.marginTop, MmToPt(20)) / kMmToPt));
+    settings.marginBottom = static_cast<int>(std::lround(ParseLengthToPoints(config_.marginBottom, MmToPt(20)) / kMmToPt));
+    settings.marginLeft = static_cast<int>(std::lround(ParseLengthToPoints(config_.marginLeft, MmToPt(15)) / kMmToPt));
+    settings.marginRight = static_cast<int>(std::lround(ParseLengthToPoints(config_.marginRight, MmToPt(15)) / kMmToPt));
+    settings.footerFontSize = "4";
 
-    wkhtmltopdf_set_global_setting(gs, "size.pageSize", config_.pageSize.c_str());
-    wkhtmltopdf_set_global_setting(gs, "margin.top", config_.marginTop.c_str());
-    wkhtmltopdf_set_global_setting(gs, "margin.bottom", config_.marginBottom.c_str());
-    wkhtmltopdf_set_global_setting(gs, "margin.left", config_.marginLeft.c_str());
-    wkhtmltopdf_set_global_setting(gs, "margin.right", config_.marginRight.c_str());
-    
-    wkhtmltopdf_object_settings* os = wkhtmltopdf_create_object_settings();
-    if (!os) {
-        LOG_ERROR("Failed to create object settings");
-        return false;
-    }
-    
-    if (config_.enableLocalFileAccess) {
-        wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
-    }
-    wkhtmltopdf_set_object_setting(os, "footer.right", "Page [page] of [toPage]");
-    wkhtmltopdf_set_object_setting(os, "footer.left", fmt::format("ppos {}", GetVersionNo()).c_str());
-    wkhtmltopdf_set_object_setting(os, "footer.fontSize", "4");
+    // PlutoBook always permits file: URLs for local images; the old
+    // config_.enableLocalFileAccess switch has no equivalent and is unused.
 
-    wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);
-    if (!converter) {
-        LOG_ERROR("Failed to create PDF converter");
-        return false;
-    }
-    
-    wkhtmltopdf_set_error_callback(converter, pdfErrorCallback);
-    wkhtmltopdf_set_warning_callback(converter, pdfWarningCallback);
-    
-    wkhtmltopdf_add_object(converter, os, htmlContent.c_str());
-    
-    bool success = (wkhtmltopdf_convert(converter) == 1);
-    
-    if (success && outputBuffer != nullptr) {
-        const unsigned char* data = nullptr;
-        long len = wkhtmltopdf_get_output(converter, &data);
-        if (len > 0 && data != nullptr) {
-            outputBuffer->assign(reinterpret_cast<const char*>(data), len);
-        }
-    }
-    
-    if (!success) {
-        LOG_ERROR("PDF conversion failed");
-    } else if (!outputPath.empty()) {
-        LOG_INFO("PDF generated: {}", outputPath);
-    }
-    
-    wkhtmltopdf_destroy_converter(converter);
-    
-    return success;
+    return ConvertToPdf(htmlContent, outputPath, outputBuffer, settings);
 }
 
 bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const std::string& outputPath,
                                           const PdfSettings& settings) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
+
     if (!initialized_) {
-        LOG_ERROR("wkhtmltopdf not initialized - call initLibrary() from main thread at startup");
+        LOG_ERROR("PlutoBook not initialized - call initLibrary() at startup");
         return false;
     }
-    
-    wkhtmltopdf_global_settings* gs = wkhtmltopdf_create_global_settings();
-    if (!gs) {
-        LOG_ERROR("Failed to create global settings");
-        return false;
-    }
-    
-    wkhtmltopdf_set_global_setting(gs, "out", outputPath.c_str());
-    // Keep going if a page (e.g. header HTML) fails to load instead of
-    // aborting the whole conversion (EMFILE "Too many open files" safety net).
-    wkhtmltopdf_set_global_setting(gs, "load.loadErrorHandling", "ignore");
-    wkhtmltopdf_set_global_setting(gs, "size.pageSize", settings.pageSize.c_str());
-    wkhtmltopdf_set_global_setting(gs, "orientation", settings.orientation.c_str());
-    
-    std::string marginTop = std::to_string(settings.marginTop) + "mm";
-    std::string marginBottom = std::to_string(settings.marginBottom) + "mm";
-    std::string marginLeft = std::to_string(settings.marginLeft) + "mm";
-    std::string marginRight = std::to_string(settings.marginRight) + "mm";
-    
-    wkhtmltopdf_set_global_setting(gs, "margin.top", marginTop.c_str());
-    wkhtmltopdf_set_global_setting(gs, "margin.bottom", marginBottom.c_str());
-    wkhtmltopdf_set_global_setting(gs, "margin.left", marginLeft.c_str());
-    wkhtmltopdf_set_global_setting(gs, "margin.right", marginRight.c_str());
-    
-    wkhtmltopdf_object_settings* os = wkhtmltopdf_create_object_settings();
-    if (!os) {
-        LOG_ERROR("Failed to create object settings");
-        return false;
-    }
-    wkhtmltopdf_set_object_setting(os, "load.blockLocalFileAccess", "false");
-    wkhtmltopdf_set_object_setting(os, "footer.right", "Page [page] of [toPage]");
-    wkhtmltopdf_set_object_setting(os, "footer.left", fmt::format("ppos {}", GetVersionNo()).c_str());
-    if (!settings.footerCenter.empty())
-        wkhtmltopdf_set_object_setting(os, "footer.center", settings.footerCenter.c_str());
-    wkhtmltopdf_set_object_setting(os, "footer.fontSize", settings.footerFontSize.c_str());
 
-    std::string headerTempPath;
-    bool useHtmlHeader = !settings.headerTitle.empty() || !settings.headerSubtitle.empty();
-    LOG_INFO("doConvertWithSettings: headerTitle='{}', headerSubtitle='{}', useHtmlHeader={}",
-             settings.headerTitle, settings.headerSubtitle, useHtmlHeader);
-    if (useHtmlHeader) {
-        // Multi-line header via temp HTML file with dynamic [section]/[subsection] support
-        // Use boost::filesystem for a cross-platform temp path (works on Windows too)
-        boost::system::error_code ec;
-        boost::filesystem::path tempDir = boost::filesystem::temp_directory_path(ec);
-        if (ec) {
-            LOG_ERROR("Failed to get temp directory: {}", ec.message());
-            tempDir = boost::filesystem::current_path();
-        }
-        boost::filesystem::path headerTempFile = tempDir / boost::filesystem::unique_path("ppos_hdr_%%%%%%%%.html");
-        headerTempPath = headerTempFile.string();
-        std::ofstream hf(headerTempPath);
-        if (hf.is_open()) {
-            // HTML-escape static text to prevent & from rendering as %26
-            auto htmlEscape = [](const std::string& s) -> std::string {
-                std::string out;
-                out.reserve(s.size());
-                for (char c : s) {
-                    switch (c) {
-                        case '&': out += "&amp;"; break;
-                        case '<': out += "&lt;"; break;
-                        case '>': out += "&gt;"; break;
-                        case '"': out += "&quot;"; break;
-                        default: out += c;
-                    }
-                }
-                return out;
-            };
-
-            hf << "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><script>"
-               << "function urldecode(s){"
-               << "return s.replace(/%([0-9A-Fa-f]{2})/g,function(m,h){"
-               << "return String.fromCharCode(parseInt(h,16));});}"
-               << "function subst(){"
-               << "var vars={};"
-               << "var qs=document.location.search.substring(1);"
-               << "if(qs){"
-               << "var pairs=qs.split('&');"
-               << "for(var i=0;i<pairs.length;i++){"
-               << "var p=pairs[i].split('=',2);"
-               << "var k=p[0];var v=p[1]||'';"
-               << "v=urldecode(v);"
-               << "vars[k]=v;"
-               << "}"
-               << "}"
-               << "vars['_rawsec']=vars['section']||'NOVALUE';"
-               << "var cs=['section','subsection','page','topage','_rawsec'];"
-               << "for(var j=0;j<cs.length;j++){"
-               << "var els=document.getElementsByClassName(cs[j]);"
-               << "for(var k=0;k<els.length;k++){"
-               << "var t=vars[cs[j]]||'';"
-               << "t=t.replace(/%26/g,'&');"
-               << "els[k].textContent=t;"
-               << "}"
-               << "}"
-               << "}"
-               << "</script><style>"
-               << "*{margin:0;padding:0;box-sizing:border-box;}"
-               << "body{font-family:Arial,sans-serif;font-size:" << settings.headerFontSize << "pt;padding:4px 0 4px 0;}"
-               << ".l{float:left;}.r{float:right;white-space:nowrap;}"
-               << ".t{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 1) << "pt;margin-top:2px;}"
-               << ".s{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 2) << "pt;}"
-               << ".sec{display:block;clear:both;font-size:" << (std::stoi(settings.headerFontSize) - 1) << "pt;margin-top:3px;word-wrap:break-word;}"
-               << "</style></head><body onload=\"subst()\">"
-               << "<div class=\"l\">" << htmlEscape(settings.headerLeft) << "</div>"
-               << "<div class=\"r\">" << htmlEscape(settings.headerRight) << "</div>";
-            if (!settings.headerTitle.empty())
-                hf << "<div class=\"t\">" << htmlEscape(settings.headerTitle) << "</div>";
-            if (!settings.headerSubtitle.empty())
-                hf << "<div class=\"s\">" << htmlEscape(settings.headerSubtitle) << "</div>";
-            if (!settings.headerCenter.empty()) {
-                if (settings.headerCenter == "[section]")
-                    hf << "<div class=\"sec\"><span class=\"section\"></span></div>";
-                else
-                    hf << "<div class=\"sec\">" << htmlEscape(settings.headerCenter) << "</div>";
-            }
-            hf << "</body></html>";
-            hf.close();
-            wkhtmltopdf_set_object_setting(os, "header.htmlUrl", headerTempPath.c_str());
-            LOG_INFO("Header HTML written to {}", headerTempPath);
-        } else {
-            LOG_ERROR("Failed to write header HTML to {}", headerTempPath);
-            useHtmlHeader = false;
-        }
-    }
-    if (!useHtmlHeader) {
-        // Fallback: single-line plain text header with native [section] token support
-        if (!settings.headerLeft.empty())
-            wkhtmltopdf_set_object_setting(os, "header.left", settings.headerLeft.c_str());
-        if (!settings.headerCenter.empty()) {
-            wkhtmltopdf_set_object_setting(os, "header.center", settings.headerCenter.c_str());
-        }
-        if (!settings.headerRight.empty())
-            wkhtmltopdf_set_object_setting(os, "header.right", settings.headerRight.c_str());
-        wkhtmltopdf_set_object_setting(os, "header.fontSize", settings.headerFontSize.c_str());
-        wkhtmltopdf_set_object_setting(os, "header.fontName", "Arial");
-    }
-    wkhtmltopdf_set_object_setting(os, "header.spacing", "5");
-    wkhtmltopdf_set_object_setting(os, "header.line", "");
-
-    wkhtmltopdf_converter* converter = wkhtmltopdf_create_converter(gs);
-    if (!converter) {
-        LOG_ERROR("Failed to create PDF converter");
-        if (!headerTempPath.empty()) std::remove(headerTempPath.c_str());
-        return false;
-    }
-    
-    wkhtmltopdf_set_error_callback(converter, pdfErrorCallback);
-    wkhtmltopdf_set_warning_callback(converter, pdfWarningCallback);
-    
-    wkhtmltopdf_add_object(converter, os, htmlContent.c_str());
-    
-    bool success = (wkhtmltopdf_convert(converter) == 1);
-    
-    if (!headerTempPath.empty()) std::remove(headerTempPath.c_str());
-    
-    if (!success) {
-        LOG_ERROR("PDF conversion failed");
-    } else {
-        LOG_INFO("PDF generated: {}", outputPath);
-    }
-    
-    wkhtmltopdf_destroy_converter(converter);
-    
-    return success;
+    return ConvertToPdf(htmlContent, outputPath, nullptr, settings);
 }
 
 } // namespace htmlToPDF

@@ -32,20 +32,28 @@ public:
         int marginLeft = 10;
         int marginRight = 10;
         std::string headerLeft;
-        std::string headerCenter;   // centered header text (supports [section] token)
+        std::string headerCenter;   // static centered text; "[section]" selects the running page-header element
         std::string headerRight;
         std::string headerTitle;    // appears below headerLeft on a second line
         std::string headerSubtitle; // appears below headerTitle on a third line
         std::string headerFontSize = "8";
-        std::string footerCenter;   // centered footer text (supports [subsection]/[page] tokens)
+        std::string footerCenter;   // centered footer text; "[subsection]" uses the running page-footer element
         std::string footerFontSize = "4";
+        // Base URL used to resolve relative image/resource paths (e.g. "templates/letterhead.png").
+        // Empty means the working directory is used, matching the old wkhtmltopdf behaviour.
+        std::string baseUrl;
+        // When true, generateMultiPagePdf numbers pages continuously across all
+        // documents (e.g. report sections) instead of restarting at 1 per document.
+        bool continuePageNumbering = false;
     };
 
     PdfGenerator();
     explicit PdfGenerator(const PdfConfig& config);
     ~PdfGenerator();
     
-    // Initialize/deinitialize the library (call once at app start/end)
+    // Initialize/deinitialize the PDF engine (call once at app start/end).
+    // PlutoBook needs no process-wide GUI initialization; initLibrary() only
+    // sets up the Windows fontconfig path.
     static bool initLibrary();
     static void deinitLibrary();
     
@@ -67,7 +75,8 @@ public:
 private:
     PdfConfig config_;
     static bool initialized_;
-    static std::mutex mutex_;  // Serializes all PDF generation (wkhtmltopdf is not thread-safe)
+    static std::mutex mutex_;  // Serializes conversions; PlutoBook Book instances are independent,
+                               // but keeping this preserves the previous single-conversion behaviour.
     
     bool doConvert(const std::string& htmlContent, const std::string& outputPath, std::string* outputBuffer = nullptr);
     bool doConvertWithSettings(const std::string& htmlContent, const std::string& outputPath, const PdfSettings& settings);

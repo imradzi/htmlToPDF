@@ -3,10 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    @page {
-        size: {{page_size}};
-        margin: 10mm 10mm 15mm 10mm;
-    }
+    /* Page size/margins are supplied by PdfGenerator. */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
         font-family: Arial, sans-serif;
@@ -82,7 +79,7 @@
     }
     .page-footer-left { float: left; }
     .page-footer-right { float: right; }
-    .section-break { page-break-before: always; }
+    .section-break { page-break-before: always; break-before: page; }
     {{#if custom_css}}
     {{{custom_css}}}
     {{/if}}

@@ -3,11 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    /* A4 Page Setup */
-    @page {
-        size: A4 {{orientation}};
-        margin: 0;
-    }
+    /* A4 page size/margins are supplied by PdfGenerator. */
     
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -25,7 +21,7 @@
     
     .page-content {
         position: relative;
-        min-height: {{#if is_landscape}}200mm{{else}}287mm{{/if}};
+        min-height: calc(var(--ppos-page-height) - var(--ppos-margin-top) - var(--ppos-margin-bottom));
         padding: 5mm;
         padding-bottom: 15mm;
     }
@@ -109,7 +105,7 @@
     
     .customer-total { font-weight: bold; }
     
-    .items-table { margin-left: 5mm; width: calc(100% - 5mm); }
+    .items-table { margin-left: 5mm; width: auto; }
     
     .grand-total {
         margin-top: auto;

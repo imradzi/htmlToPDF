@@ -3,30 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    @page {
-        size: {{orientation}};
-        margin: 0;
-    }
+    /* Page size/margins are supplied by PdfGenerator. */
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
-        {{#if is_landscape}}
-        width: 297mm;
-        height: 210mm;
-        {{else}}
-        width: 210mm;
-        height: 297mm;
-        {{/if}}
+        width: 100%;
         margin: 0;
         padding: 0;
     }
-    body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #333; padding: 20mm; line-height: 1.6; }
+    body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #333; padding: 0; line-height: 1.6; }
     .page-content {
         position: relative;
-        {{#if is_landscape}}
-        min-height: 170mm;
-        {{else}}
-        min-height: 257mm;
-        {{/if}}
+        min-height: calc(var(--ppos-page-height) - var(--ppos-margin-top) - var(--ppos-margin-bottom));
         padding-bottom: 30mm;
     }
     .letterhead-img { width: 100%; max-height: 100px; margin-bottom: 30px; }
@@ -41,7 +28,7 @@
 </head>
 <body>
 <div class="page-content">
-    <img src="{{letterhead_image}}" class="letterhead" onerror="this.style.display='none'">
+    {{#if letterhead_image}}<img src="{{letterhead_image}}" class="letterhead">{{/if}}
     
     <div class="sender">
         <strong>{{sender_name}}</strong><br>

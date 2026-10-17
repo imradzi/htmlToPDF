@@ -7,55 +7,29 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
-# wkhtmltox settings - bundled libraries for Windows
-set(WKHTMLTOX_VERSION "0.12.6-1")
-
-if(WIN32)
-    # Use bundled wkhtmltox libraries based on target architecture.
-    # CMAKE_CL_64 only works for MSVC; for MinGW cross-compilation
-    # detect 32/64-bit via CMAKE_SIZEOF_VOID_P (4 = 32-bit, 8 = 64-bit).
-    if((MSVC AND CMAKE_CL_64 STREQUAL "0") OR CMAKE_SIZEOF_VOID_P EQUAL 4)
-        # 32-bit build
-        set(WKHTMLTOX_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lib/win32")
-        message(STATUS "Using 32-bit wkhtmltox library")
+# PlutoBook is provided by the parent build (see the top-level CMakeLists.txt):
+# PLUTOBOOK_INCLUDE_DIR / PLUTOBOOK_LIBRARY plus the PkgConfig::PLUTOBOOK_PC
+# imported target that carries cairo/fontconfig/freetype/harfbuzz/ICU/etc.
+if(NOT TARGET PkgConfig::PLUTOBOOK_PC)
+    # Standalone build (e.g. re_cmake64.bat): locate the vendored prefix.
+    if(WIN32)
+        set(PLUTOBOOK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/prefix/win64")
     else()
-        # 64-bit build
-        set(WKHTMLTOX_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lib/win64")
-        message(STATUS "Using 64-bit wkhtmltox library")
+        set(PLUTOBOOK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/prefix/linux-x64")
     endif()
-    
-    set(WKHTMLTOX_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
-    set(WKHTMLTOX_LIBRARY "${WKHTMLTOX_ROOT}/wkhtmltox.lib")
-    set(WKHTMLTOX_DLL "${WKHTMLTOX_ROOT}/wkhtmltox.dll")
-    
-    if(NOT EXISTS "${WKHTMLTOX_LIBRARY}")
-        message(FATAL_ERROR "wkhtmltox library not found at ${WKHTMLTOX_LIBRARY}. "
-            "Please place the appropriate wkhtmltox.lib in lib/win32 or lib/win64.")
-    endif()
-else()
-    # Linux: Try to find system installation
-    find_path(WKHTMLTOX_INCLUDE_DIR wkhtmltox/pdf.h
-        PATHS 
-            /usr/include 
-            /usr/local/include
+    find_path(PLUTOBOOK_INCLUDE_DIR plutobook/plutobook.hpp
+        PATHS "${PLUTOBOOK_ROOT}/include" /usr/include /usr/local/include
     )
-    find_library(WKHTMLTOX_LIBRARY NAMES wkhtmltox
-        PATHS 
-            /usr/lib 
-            /usr/local/lib 
-            /usr/lib/x86_64-linux-gnu
-    )
-    
-    if(NOT WKHTMLTOX_INCLUDE_DIR OR NOT WKHTMLTOX_LIBRARY)
-        message(FATAL_ERROR "wkhtmltox not found. Install libwkhtmltox-dev or equivalent.")
+    find_package(PkgConfig REQUIRED)
+    if(CMAKE_HOST_WIN32)
+        set(_PPOS_PC_SEP ";")
+    else()
+        set(_PPOS_PC_SEP ":")
     endif()
+    set(ENV{PKG_CONFIG_PATH}
+        "${PLUTOBOOK_ROOT}/lib/pkgconfig${_PPOS_PC_SEP}${PLUTOBOOK_ROOT}/lib/x86_64-linux-gnu/pkgconfig${_PPOS_PC_SEP}$ENV{PKG_CONFIG_PATH}")
+    pkg_check_modules(PLUTOBOOK_PC REQUIRED IMPORTED_TARGET plutobook)
 endif()
-
-if(NOT EXISTS "${WKHTMLTOX_INCLUDE_DIR}/wkhtmltox/pdf.h")
-    message(FATAL_ERROR "wkhtmltox headers not found at ${WKHTMLTOX_INCLUDE_DIR}/wkhtmltox")
-endif()
-
-message(STATUS "Found libwkhtmltox: ${WKHTMLTOX_LIBRARY}")
 
 # ========== Template Generation ==========
 # Generate C++ header from HTML templates
@@ -96,17 +70,28 @@ add_custom_target(generate_templates
 add_library(htmlToPDF STATIC
     src/template_engine.cpp
     src/pdf_generator.cpp
+    src/pdf_generator_proxy.cpp
     src/html_report_builder.cpp
+    src/html_report_builder_pdf.cpp
     src/sales_summary_builder.cpp
     src/purchase_summary_builder.cpp
     src/invoice_builder.cpp
     ${GENERATED_TEMPLATES_HEADER}  # Add as source so it's tracked as dependency
 )
 
+target_compile_features(htmlToPDF PUBLIC cxx_std_20)
+
+# PlutoBook is built with -fno-rtti. Only pdf_generator.cpp instantiates its
+# canvas classes; compiling just that file the same way avoids a link-time
+# reference to typeinfo for plutobook::Canvas, which the library does not emit.
+if(NOT MSVC)
+    set_source_files_properties(src/pdf_generator.cpp PROPERTIES COMPILE_OPTIONS "-fno-rtti")
+endif()
+
 target_include_directories(htmlToPDF PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}/generated
-    ${WKHTMLTOX_INCLUDE_DIR}
+    ${PLUTOBOOK_INCLUDE_DIR}
     ${wxWidgets_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/../wpObject
     ${CMAKE_CURRENT_SOURCE_DIR}/../net
@@ -119,26 +104,23 @@ target_compile_definitions(htmlToPDF PRIVATE NDEBUG wxDEBUG_LEVEL=0)
 # Ensure template generation happens before compiling
 add_dependencies(htmlToPDF generate_templates)
 
-# Export wkhtmltox paths to parent scope so ppServer can link it explicitly
-set(WKHTMLTOX_LIBRARY "${WKHTMLTOX_LIBRARY}" PARENT_SCOPE)
-set(WKHTMLTOX_INCLUDE_DIR "${WKHTMLTOX_INCLUDE_DIR}" PARENT_SCOPE)
-
-# Link with logger from parent project if available
-# wkhtmltox is PRIVATE — only htmlToPDF itself needs it, consumers should not inherit it
+# Link with logger from parent project if available.
+# PlutoBook and its dependencies are PRIVATE: only htmlToPDF needs them, but
+# CMake still propagates static-library dependencies to the final link.
 if(TARGET logger)
     target_link_libraries(htmlToPDF PUBLIC
         ${wxWidgets_LIBRARIES}
         logger
     )
     target_link_libraries(htmlToPDF PRIVATE
-        ${WKHTMLTOX_LIBRARY}
+        PkgConfig::PLUTOBOOK_PC
     )
 else()
     target_link_libraries(htmlToPDF PUBLIC
         ${wxWidgets_LIBRARIES}
     )
     target_link_libraries(htmlToPDF PRIVATE
-        ${WKHTMLTOX_LIBRARY}
+        PkgConfig::PLUTOBOOK_PC
     )
 endif()
 
@@ -149,25 +131,22 @@ add_executable(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${WKHTMLTOX_INCLUDE_DIR}
+    ${PLUTOBOOK_INCLUDE_DIR}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     htmlToPDF
-    ${WKHTMLTOX_LIBRARY}
+    PkgConfig::PLUTOBOOK_PC
 )
 
-# Copy wkhtmltox DLL to output directory (Windows)
-if(WIN32)
-    if(EXISTS "${WKHTMLTOX_DLL}")
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${WKHTMLTOX_DLL}"
-                $<TARGET_FILE_DIR:${PROJECT_NAME}>
-            COMMENT "Copying wkhtmltox.dll to output directory"
-        )
-    endif()
-endif()
+# Standalone probe used to verify report-builder headers/footers.
+add_executable(report_probe tools/report_probe.cpp)
+target_include_directories(report_probe PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${PLUTOBOOK_INCLUDE_DIR}
+)
+target_link_libraries(report_probe PRIVATE htmlToPDF)
+target_compile_features(report_probe PRIVATE cxx_std_20)
 
 # Copy templates directory to build folder
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/templates DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

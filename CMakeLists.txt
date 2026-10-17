@@ -148,5 +148,14 @@ target_include_directories(report_probe PRIVATE
 target_link_libraries(report_probe PRIVATE htmlToPDF)
 target_compile_features(report_probe PRIVATE cxx_std_20)
 
+# Standalone HTML -> PDF converter used to diff our output against wkhtmltopdf.
+add_executable(html2pdf tools/html2pdf.cpp)
+target_include_directories(html2pdf PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${PLUTOBOOK_INCLUDE_DIR}
+)
+target_link_libraries(html2pdf PRIVATE htmlToPDF)
+target_compile_features(html2pdf PRIVATE cxx_std_20)
+
 # Copy templates directory to build folder
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/templates DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

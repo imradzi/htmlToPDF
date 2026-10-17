@@ -32,6 +32,26 @@ constexpr double kMmToPt = 72.0 / 25.4;
 
 double MmToPt(double mm) { return mm * kMmToPt; }
 
+// ── wkhtmltopdf content scale ──────────────────────────────────
+// wkhtmltopdf's default "smart shrinking" lays the document out in a 1/scale
+// larger viewport and paints it at `scale`, so every CSS length (pt, mm, px)
+// ends up at 80% of nominal while the page box - paper size, margins and the
+// header/footer - keeps its real size. Every PharmaPOS template was tuned
+// against that behaviour, so PdfSettings::contentScale defaults to 0.8.
+constexpr double kMinContentScale = 0.2;
+constexpr double kMaxContentScale = 2.0;
+
+double EffectiveContentScale(const PdfGenerator::PdfSettings& settings) {
+    const double scale = settings.contentScale > 0 ? settings.contentScale : 1.0;
+    return std::clamp(scale, kMinContentScale, kMaxContentScale);
+}
+
+// Document-space factor: page size, margins and page-furniture font sizes are
+// inflated by this so painting at contentScale yields the real paper size.
+double ContentLayoutFactor(const PdfGenerator::PdfSettings& settings) {
+    return 1.0 / EffectiveContentScale(settings);
+}
+
 std::string ToLower(std::string value) {
     std::transform(value.begin(), value.end(), value.begin(),
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -43,6 +63,17 @@ std::string Trim(const std::string& value) {
     if (first == std::string::npos) return {};
     const auto last = value.find_last_not_of(" \t\r\n");
     return value.substr(first, last - first + 1);
+}
+
+// Parse a font size setting ("8", "8pt", "12px") into points.
+double ParseFontSizePt(const std::string& value, double fallback) {
+    if (value.empty()) return fallback;
+    char* end = nullptr;
+    const double number = std::strtod(value.c_str(), &end);
+    if (end == value.c_str()) return fallback;
+    const std::string unit = ToLower(Trim(std::string(end)));
+    if (unit == "px") return number * 0.75;
+    return number;  // pt or unitless
 }
 
 plutobook::PageSize ResolvePageSize(const std::string& name) {
@@ -100,11 +131,14 @@ std::string CssString(const std::string& value) {
     return out;
 }
 
-std::string MarginBoxRule(const char* box, const std::string& text, const std::string& fontSize) {
+std::string MarginBoxRule(const char* box, const std::string& text, double fontSizePt,
+                          const std::string& extraDeclarations = {}) {
     if (text.empty()) return {};
-    const std::string size = fontSize.empty() ? "8" : fontSize;
-    return fmt::format("  @{} {{ content: \"{}\"; font-size: {}pt; white-space: pre-line; }}\n",
-                       box, CssString(text), size);
+    std::string css = fmt::format("  @{} {{ content: \"{}\"; font-size: {:.2f}pt; white-space: pre-line;",
+                                  box, CssString(text), fontSizePt);
+    if (!extraDeclarations.empty()) css += " " + extraDeclarations + ";";
+    css += " }\n";
+    return css;
 }
 
 // Builds the @page rule that replaces wkhtmltopdf's header.* / footer.* settings.
@@ -114,9 +148,15 @@ std::string BuildPageStyle(const PdfGenerator::PdfSettings& settings,
                            uint32_t pageOffset = 0, uint32_t totalPages = 0) {
     const bool runningHeader = settings.headerCenter == "[section]";
     const bool runningFooter = settings.footerCenter == "[subsection]";
+    // Page furniture lives in the scaled document too, so its sizes are
+    // inflated to come out at their real physical size on the paper.
+    const double k = ContentLayoutFactor(settings);
 
     plutobook::PageSize pageSize = ResolvePageSize(settings.pageSize);
     if (IsLandscape(settings.orientation)) pageSize = pageSize.landscape();
+
+    const double headerPt = ParseFontSizePt(settings.headerFontSize, 8.0) * k;
+    const double footerPt = ParseFontSizePt(settings.footerFontSize, 4.0) * k;
 
     std::string css;
     css.reserve(1024);
@@ -127,13 +167,14 @@ std::string BuildPageStyle(const PdfGenerator::PdfSettings& settings,
         ":root {{\n"
         "  --ppos-page-width: {:.3f}mm;\n"
         "  --ppos-page-height: {:.3f}mm;\n"
-        "  --ppos-margin-top: {}mm;\n"
-        "  --ppos-margin-bottom: {}mm;\n"
-        "  --ppos-margin-left: {}mm;\n"
-        "  --ppos-margin-right: {}mm;\n"
+        "  --ppos-margin-top: {:.3f}mm;\n"
+        "  --ppos-margin-bottom: {:.3f}mm;\n"
+        "  --ppos-margin-left: {:.3f}mm;\n"
+        "  --ppos-margin-right: {:.3f}mm;\n"
         "}}\n",
-        pageSize.width() / kMmToPt, pageSize.height() / kMmToPt,
-        settings.marginTop, settings.marginBottom, settings.marginLeft, settings.marginRight);
+        pageSize.width() / kMmToPt * k, pageSize.height() / kMmToPt * k,
+        settings.marginTop * k, settings.marginBottom * k,
+        settings.marginLeft * k, settings.marginRight * k);
 
     if (totalPages > 0) {
         // Continue numbering across documents: reset only on this document's
@@ -142,12 +183,21 @@ std::string BuildPageStyle(const PdfGenerator::PdfSettings& settings,
                            pageOffset);
     }
 
+    // wkhtmltopdf bottom-aligns the header block inside the top margin and
+    // leaves header.spacing (5mm) plus the header template's 4px padding above
+    // the content area; its footer starts right at the content bottom. Keeping
+    // the same alignment restores the top margin the old output had.
+    const double headerGapMm = (5.0 + 4.0 * 0.75 / kMmToPt) * k;
+
     css += "@page {\n";
 
     if (runningHeader) {
-        css += "  @top-center { content: element(page-header); width: 100%; vertical-align: top; }\n";
+        css += fmt::format("  @top-center {{ content: element(page-header); width: 100%; "
+                           "vertical-align: bottom; padding-bottom: {:.2f}mm; }}\n", headerGapMm);
     } else {
-        css += MarginBoxRule("top-left", settings.headerLeft, settings.headerFontSize);
+        const std::string align = fmt::format("vertical-align: bottom; padding-bottom: {:.2f}mm",
+                                              headerGapMm);
+        css += MarginBoxRule("top-left", settings.headerLeft, headerPt, align);
 
         std::string center = settings.headerCenter;
         auto appendLine = [&center](const std::string& line) {
@@ -157,27 +207,33 @@ std::string BuildPageStyle(const PdfGenerator::PdfSettings& settings,
         };
         appendLine(settings.headerTitle);
         appendLine(settings.headerSubtitle);
-        css += MarginBoxRule("top-center", center, settings.headerFontSize);
-        css += MarginBoxRule("top-right", settings.headerRight, settings.headerFontSize);
+        css += MarginBoxRule("top-center", center, headerPt, align);
+        css += MarginBoxRule("top-right", settings.headerRight, headerPt, align);
     }
 
     if (runningFooter) {
-        const std::string size = settings.footerFontSize.empty() ? "4" : settings.footerFontSize;
-        css += fmt::format("  @bottom-center {{ content: element(page-footer); font-size: {}pt; }}\n", size);
+        css += fmt::format("  @bottom-center {{ content: element(page-footer); font-size: {:.2f}pt; "
+                           "vertical-align: top; }}\n", footerPt);
     } else {
-        css += MarginBoxRule("bottom-center", settings.footerCenter, settings.footerFontSize);
+        css += MarginBoxRule("bottom-center", settings.footerCenter, footerPt, "vertical-align: top");
     }
 
-    css += MarginBoxRule("bottom-left", fmt::format("ppos {}", GetVersionNo()), settings.footerFontSize);
-    const std::string footerSize = settings.footerFontSize.empty() ? "4" : settings.footerFontSize;
+    css += MarginBoxRule("bottom-left", fmt::format("ppos {}", GetVersionNo()), footerPt,
+                         "vertical-align: top");
     if (totalPages > 0) {
         css += fmt::format("  @bottom-right {{ content: \"Page \" counter(page) \" of {}\"; "
-                           "font-size: {}pt; }}\n", totalPages, footerSize);
+                           "font-size: {:.2f}pt; vertical-align: top; }}\n", totalPages, footerPt);
     } else {
         css += fmt::format("  @bottom-right {{ content: \"Page \" counter(page) \" of \" counter(pages); "
-                           "font-size: {}pt; }}\n", footerSize);
+                           "font-size: {:.2f}pt; vertical-align: top; }}\n", footerPt);
     }
     css += "}\n";
+
+    if (runningHeader) {
+        // HtmlReportBuilder leaves .po-header unsized (its children use em), so
+        // the legacy header font size can be applied here.
+        css += fmt::format(".po-header {{ font-size: {:.2f}pt; }}\n", headerPt);
+    }
     return css;
 }
 
@@ -194,14 +250,25 @@ private:
     std::string& output_;
 };
 
-plutobook::PageSize ResolveBookPageSize(const PdfGenerator::PdfSettings& settings) {
+// Real paper size, i.e. what the PDF pages must end up being.
+plutobook::PageSize ResolveOutputPageSize(const PdfGenerator::PdfSettings& settings) {
     plutobook::PageSize pageSize = ResolvePageSize(settings.pageSize);
     return IsLandscape(settings.orientation) ? pageSize.landscape() : pageSize;
 }
 
+// Page size handed to the layout engine: inflated by 1/contentScale so that
+// painting at contentScale reproduces the real paper size.
+plutobook::PageSize ResolveBookPageSize(const PdfGenerator::PdfSettings& settings) {
+    const plutobook::PageSize pageSize = ResolveOutputPageSize(settings);
+    const double k = ContentLayoutFactor(settings);
+    return plutobook::PageSize(static_cast<float>(pageSize.width() * k),
+                               static_cast<float>(pageSize.height() * k));
+}
+
 plutobook::PageMargins ResolveMargins(const PdfGenerator::PdfSettings& settings) {
-    return plutobook::PageMargins(MmToPt(settings.marginTop), MmToPt(settings.marginRight),
-                                  MmToPt(settings.marginBottom), MmToPt(settings.marginLeft));
+    const double k = ContentLayoutFactor(settings);
+    return plutobook::PageMargins(MmToPt(settings.marginTop * k), MmToPt(settings.marginRight * k),
+                                  MmToPt(settings.marginBottom * k), MmToPt(settings.marginLeft * k));
 }
 
 std::string MakeFileUrl(const std::filesystem::path& path) {
@@ -227,8 +294,34 @@ std::string ResolveBaseUrl(const PdfGenerator::PdfSettings& settings) {
     return baseUrl;
 }
 
+// Paints every page of the given books onto `canvas`, applying the PlutoBook
+// px->pt conversion on top of the wkhtmltopdf-compatible content scale. The
+// page size is scaled back down so the PDF keeps the real paper size.
+void PaintBooks(const std::vector<plutobook::Book*>& books, plutobook::PDFCanvas& canvas,
+                double contentScale) {
+    const auto scale = static_cast<float>(contentScale);
+    canvas.scale(plutobook::units::px * scale, plutobook::units::px * scale);
+
+    for (auto* book : books) {
+        const uint32_t pageCount = book->pageCount();
+        for (uint32_t index = 0; index < pageCount; ++index) {
+            const plutobook::PageSize pageSize = book->pageSizeAt(index);
+            canvas.setPageSize(plutobook::PageSize(pageSize.width() * scale,
+                                                   pageSize.height() * scale));
+            book->renderPage(canvas, index);
+            canvas.showPage();
+        }
+    }
+    canvas.finish();
+}
+
 bool ConvertToPdf(const std::string& htmlContent, const std::string& outputPath,
                   std::string* outputBuffer, const PdfGenerator::PdfSettings& settings) {
+    if (outputBuffer == nullptr && outputPath.empty()) {
+        LOG_ERROR("PlutoBook: no output path or buffer provided");
+        return false;
+    }
+
     plutobook::Book book(ResolveBookPageSize(settings), ResolveMargins(settings),
                          plutobook::MediaType::Print);
 
@@ -239,22 +332,32 @@ bool ConvertToPdf(const std::string& htmlContent, const std::string& outputPath,
         return false;
     }
 
-    bool success = false;
+    const plutobook::PageSize outputPageSize = ResolveOutputPageSize(settings);
+    const double contentScale = EffectiveContentScale(settings);
+
+    // A PDFCanvas is used instead of Book::writeToPdf so the content scale can
+    // be folded into the canvas transform.
+    std::unique_ptr<StringOutputStream> stream;
     if (outputBuffer != nullptr) {
         outputBuffer->clear();
-        StringOutputStream stream(*outputBuffer);
-        success = book.writeToPdf(stream);
-    } else if (!outputPath.empty()) {
-        success = book.writeToPdf(outputPath);
-    } else {
-        LOG_ERROR("PlutoBook: no output path or buffer provided");
+        stream = std::make_unique<StringOutputStream>(*outputBuffer);
+    }
+
+    std::unique_ptr<plutobook::PDFCanvas> canvas;
+    if (stream) canvas = std::make_unique<plutobook::PDFCanvas>(*stream, outputPageSize);
+    else canvas = std::make_unique<plutobook::PDFCanvas>(outputPath, outputPageSize);
+
+    if (canvas->isNull()) {
+        LOG_ERROR("PlutoBook: failed to create PDF canvas for {}", outputBuffer ? "<buffer>" : outputPath);
         return false;
     }
 
-    if (!success) {
-        LOG_ERROR("PlutoBook: PDF conversion failed");
+    if (book.pageCount() == 0) {
+        LOG_ERROR("PlutoBook: document produced no pages");
         return false;
     }
+
+    PaintBooks({&book}, *canvas, contentScale);
 
     LOG_INFO("PDF generated: {} ({} pages)", outputBuffer ? "<buffer>" : outputPath, book.pageCount());
     return true;
@@ -372,25 +475,16 @@ bool PdfGenerator::generateMultiPagePdf(const std::vector<std::string>& htmlPage
 
     // Concatenate every document's pages onto a single PDF surface, preserving
     // each document's own page size (portrait/landscape).
-    plutobook::PDFCanvas canvas(outputPath, books.front()->pageSizeAt(0));
+    plutobook::PDFCanvas canvas(outputPath, ResolveOutputPageSize(settings));
     if (canvas.isNull()) {
         LOG_ERROR("PlutoBook: failed to create PDF canvas for {}", outputPath);
         return false;
     }
 
-    // Match Book::writeToPdf: PlutoBook lays out in CSS pixels (96 dpi) while
-    // PDF pages are in points, so the canvas must be scaled before rendering.
-    canvas.scale(plutobook::units::px, plutobook::units::px);
-
-    for (auto& book : books) {
-        const uint32_t pageCount = book->pageCount();
-        for (uint32_t index = 0; index < pageCount; ++index) {
-            canvas.setPageSize(book->pageSizeAt(index));
-            book->renderPage(canvas, index);
-            canvas.showPage();
-        }
-    }
-    canvas.finish();
+    std::vector<plutobook::Book*> pages;
+    pages.reserve(books.size());
+    for (auto& book : books) pages.push_back(book.get());
+    PaintBooks(pages, canvas, EffectiveContentScale(settings));
 
     LOG_INFO("Multi-page PDF generated: {} ({} documents)", outputPath, books.size());
     return true;

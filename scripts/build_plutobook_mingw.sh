@@ -48,7 +48,7 @@ FREETYPE_URL="https://download.savannah.gnu.org/releases/freetype/freetype-${FRE
 ICU_URL="https://github.com/unicode-org/icu/releases/download/release-76-1/icu4c-76_1-src.tgz"
 HARFBUZZ_URL="https://github.com/harfbuzz/harfbuzz/releases/download/${HARFBUZZ_VER}/harfbuzz-${HARFBUZZ_VER}.tar.xz"
 PIXMAN_URL="https://cairographics.org/releases/pixman-${PIXMAN_VER}.tar.gz"
-FONTCONFIG_URL="https://www.freedesktop.org/software/fontconfig/release/fontconfig-${FONTCONFIG_VER}.tar.xz"
+FONTCONFIG_URL="https://github.com/fontconfig/fontconfig/archive/refs/tags/${FONTCONFIG_VER}.tar.gz"
 CAIRO_URL="https://cairographics.org/releases/cairo-${CAIRO_VER}.tar.xz"
 JPEGTURBO_URL="https://github.com/libjpeg-turbo/libjpeg-turbo/releases/download/${JPEGTURBO_VER}/libjpeg-turbo-${JPEGTURBO_VER}.tar.gz"
 
@@ -135,7 +135,7 @@ fetch() {
     local url="$1" out="$2"
     if [ ! -f "$out" ]; then
         echo "=== Downloading $(basename "$out") ==="
-        curl -sSL -o "$out" "$url"
+        curl -sSL --fail -o "$out" "$url"
     fi
 }
 
@@ -202,9 +202,19 @@ build_icu() {
     mkdir -p "$dir" && cd "$dir"
     fetch "$ICU_URL" "icu4c-76_1-src.tgz" && extract "icu4c-76_1-src.tgz"
     local src="$dir/icu/source"
-    if [ ! -x "$dir/host/bin/icupkg" ] && [ ! -x "$dir/host/bin/genrb" ]; then
-        mkdir -p host && cd host
-        "$src/runConfigureICU" Linux --disable-shared --enable-static --prefix="$dir/host-install"
+    if [ ! -x "$dir/host/bin/icupkg" ] || [ ! -x "$dir/host/bin/genrb" ]; then
+        # The host tools must be built with the *native* compiler. The script
+        # exports CC/CXX/CFLAGS/... for the MinGW cross build, so strip them
+        # here or configure will try to run cross-compiled .exe files.
+        rm -rf "$dir/host"
+        mkdir -p "$dir/host"
+        cd "$dir/host"
+        env -u CC -u CXX -u AR -u RANLIB -u STRIP \
+            -u CPP -u CPPFLAGS -u CFLAGS -u CXXFLAGS -u LDFLAGS \
+            -u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR \
+            CC=gcc CXX=g++ AR=ar RANLIB=ranlib \
+            "$src/runConfigureICU" Linux --disable-shared --enable-static \
+            --prefix="$dir/host-install"
         make -j "$JOBS"
         cd ..
     fi
@@ -225,8 +235,9 @@ build_harfbuzz() {
     meson setup build "harfbuzz-${HARFBUZZ_VER}" --cross-file="$CROSS_FILE" \
         --prefix="$MINGW_PREFIX" --buildtype=release --default-library=static \
         -Dglib=disabled -Dgobject=disabled -Dicu=enabled -Dfreetype=enabled \
-        -Dcairo=disabled -Draster=disabled -Dvector=disabled -Dsubset=disabled \
-        -Dintrospection=disabled -Dtests=disabled -Ddocs=disabled -Dutilities=disabled
+        -Dcairo=disabled -Dgdi=disabled -Ddirectwrite=disabled \
+        -Dintrospection=disabled -Dtests=disabled -Ddocs=disabled \
+        -Dutilities=disabled -Dbenchmark=disabled
     meson compile -C build && meson install -C build
 }
 
@@ -248,10 +259,10 @@ build_fontconfig() {
     echo "=== Building fontconfig ${FONTCONFIG_VER} ==="
     local dir="${WORKDIR}/fontconfig"
     mkdir -p "$dir" && cd "$dir"
-    fetch "$FONTCONFIG_URL" "fontconfig-${FONTCONFIG_VER}.tar.xz" && extract "fontconfig-${FONTCONFIG_VER}.tar.xz"
+    fetch "$FONTCONFIG_URL" "fontconfig-${FONTCONFIG_VER}.tar.gz" && extract "fontconfig-${FONTCONFIG_VER}.tar.gz"
     meson setup build "fontconfig-${FONTCONFIG_VER}" --cross-file="$CROSS_FILE" \
         --prefix="$MINGW_PREFIX" --buildtype=release --default-library=static \
-        -Ddoc=disabled -Dtests=disabled -Dtools=disabled -Dxml-backend=expat
+        -Ddoc=disabled -Dtests=disabled -Dtools=disabled -Dcache-build=disabled
     meson compile -C build && meson install -C build
 }
 
@@ -266,8 +277,7 @@ build_cairo() {
         --prefix="$MINGW_PREFIX" --buildtype=release --default-library=static \
         -Dglib=disabled -Dxlib=disabled -Dxcb=disabled -Dpng=enabled \
         -Dzlib=enabled -Dfreetype=enabled -Dfontconfig=enabled \
-        -Dpdf=enabled -Dps=enabled -Dtests=disabled -Dtee=disabled \
-        -Dcpp_args="-DCAIRO_WIN32_STATIC_BUILD"
+        -Dtests=disabled -Dtee=disabled
     meson compile -C build && meson install -C build
 }
 

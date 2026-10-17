@@ -255,14 +255,15 @@ std::string HtmlReportBuilder::renderHtmlImpl(size_t firstSection, size_t lastSe
     .section-break { page-break-before: always; break-before: page; }
     .po-header {
         font-family: Arial, sans-serif;
-        font-size: 10pt;
     }
+    /* Sizes are em-relative: PdfGenerator injects the legacy wkhtmltopdf header
+       font size on .po-header, so these keep the old 8/7/6/7pt ratios. */
     .po-header .row { overflow: hidden; }
     .po-header .left { float: left; }
     .po-header .right { float: right; white-space: nowrap; }
-    .po-header .title { clear: both; font-size: 9pt; margin-top: 2px; }
-    .po-header .subtitle { clear: both; font-size: 8pt; }
-    .po-header .section { clear: both; font-size: 8pt; margin-top: 3px; overflow-wrap: break-word; }
+    .po-header .title { clear: both; font-size: 0.875em; margin-top: 2px; }
+    .po-header .subtitle { clear: both; font-size: 0.75em; }
+    .po-header .section { clear: both; font-size: 0.875em; margin-top: 3px; overflow-wrap: break-word; }
     .page-title {
         font-size: )" << fontSize_.label << R"(pt;
         font-weight: bold;

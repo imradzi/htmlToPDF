@@ -45,6 +45,12 @@ public:
         // When true, generateMultiPagePdf numbers pages continuously across all
         // documents (e.g. report sections) instead of restarting at 1 per document.
         bool continuePageNumbering = false;
+        // Render scale for the document content. wkhtmltopdf's default "smart
+        // shrinking" renders every CSS length at 80% of its nominal size while
+        // leaving the page box (paper size, margins, header/footer) alone, and
+        // all existing templates were tuned against that. 1.0 gives standard
+        // CSS sizing.
+        double contentScale = 0.8;
     };
 
     PdfGenerator();

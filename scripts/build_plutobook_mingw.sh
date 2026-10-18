@@ -131,21 +131,49 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 EOF
 
+archive_ok() {
+    case "$1" in
+        *.tar.gz|*.tgz|*.tar.xz) tar tf "$1" >/dev/null 2>&1 ;;
+        *) return 0 ;;
+    esac
+}
+
 fetch() {
     local url="$1" out="$2"
-    if [ ! -f "$out" ]; then
-        echo "=== Downloading $(basename "$out") ==="
-        curl -sSL --fail -o "$out" "$url"
+    local part="$out.part"
+    if [ -f "$out" ]; then
+        if archive_ok "$out"; then
+            return 0
+        fi
+        # A truncated download from an earlier run would otherwise be reused
+        # forever, because the file exists.
+        echo "=== Existing $(basename "$out") is corrupt; re-downloading ==="
+        rm -f "$out"
     fi
+    echo "=== Downloading $(basename "$out") ==="
+    rm -f "$part"
+    curl -sSL --fail --retry 5 --retry-delay 2 --retry-all-errors -o "$part" "$url"
+    if ! archive_ok "$part"; then
+        echo "ERROR: $(basename "$out") failed integrity check after download" >&2
+        rm -f "$part"
+        exit 1
+    fi
+    mv -f "$part" "$out"
 }
 
 extract() {
-    local archive="$1"
+    local archive="$1" base
     case "$archive" in
-        *.tar.gz|*.tgz) tar xf "$archive" ;;
-        *.tar.xz)        tar xf "$archive" ;;
+        *.tar.gz|*.tgz|*.tar.xz) ;;
         *) echo "ERROR: unknown archive: $archive" >&2; exit 1 ;;
     esac
+    base="$(basename "$archive")"
+    base="${base%.tar.gz}"; base="${base%.tgz}"; base="${base%.tar.xz}"
+    # Drop any partial extraction left behind by an earlier failed run.
+    if [ -n "$base" ] && [ -d "$base" ]; then
+        rm -rf "$base"
+    fi
+    tar xf "$archive"
 }
 
 cross_configure() {
@@ -219,6 +247,17 @@ build_icu() {
         cd ..
     fi
     mkdir -p cross && cd cross
+    # ICU's MinGW platform fragments (config/mh-mingw*) hardcode the shared
+    # import-library names (-licuuc, -licuin, -licutu ...). A --disable-shared
+    # cross build names its in-tree static libraries libsicuuc.a etc., so the
+    # cross-built tools (makeconv, genrb, ...) fail with "cannot find -licutu".
+    # Prepending $(STATIC_PREFIX_WHEN_USED) fixes the static case and expands to
+    # nothing when shared libs are enabled, so this is safe for both. The sed is
+    # idempotent: already-patched lines no longer match '="-l'.
+    for mh in "$src"/config/mh-mingw "$src"/config/mh-mingw64; do
+        [ -f "$mh" ] || continue
+        sed -i -E 's/^(ICULIBS_(DT|I18N|IO|UC|TOOLUTIL)=")-l/\1-l$(STATIC_PREFIX_WHEN_USED)/' "$mh"
+    done
     "$src/configure" --host="${CROSS}" --build="$(gcc -dumpmachine)" \
         --prefix="${MINGW_PREFIX}" --disable-shared --enable-static \
         --with-cross-build="$dir/host" --with-data-packaging=static
@@ -248,9 +287,12 @@ build_pixman() {
     local dir="${WORKDIR}/pixman"
     mkdir -p "$dir" && cd "$dir"
     fetch "$PIXMAN_URL" "pixman-${PIXMAN_VER}.tar.gz" && extract "pixman-${PIXMAN_VER}.tar.gz"
-    cd "pixman-${PIXMAN_VER}"
-    cross_configure --disable-libpng --disable-gtk
-    make -j "$JOBS" && make install
+    # pixman >= 0.46 ships a Meson-only tarball (no ./configure).
+    meson setup build "pixman-${PIXMAN_VER}" --cross-file="$CROSS_FILE" \
+        --prefix="$MINGW_PREFIX" --buildtype=release --default-library=static \
+        -Dgtk=disabled -Dlibpng=disabled -Dtests=disabled -Ddemos=disabled \
+        -Dopenmp=disabled
+    meson compile -C build && meson install -C build
 }
 
 # ── 7. fontconfig ──────────────────────────────────────────────

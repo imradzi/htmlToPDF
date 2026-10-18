@@ -12,10 +12,16 @@ include(FetchContent)
 # imported target that carries cairo/fontconfig/freetype/harfbuzz/ICU/etc.
 if(NOT TARGET PkgConfig::PLUTOBOOK_PC)
     # Standalone build (e.g. re_cmake64.bat): locate the vendored prefix.
-    if(WIN32)
-        set(PLUTOBOOK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/prefix/win64")
-    else()
-        set(PLUTOBOOK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/prefix/linux-x64")
+    if(NOT DEFINED PLUTOBOOK_ROOT)
+        if(WIN32)
+            if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+                set(PLUTOBOOK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/prefix/win32")
+            else()
+                set(PLUTOBOOK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/prefix/win64")
+            endif()
+        else()
+            set(PLUTOBOOK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/prefix/linux-x64")
+        endif()
     endif()
     find_path(PLUTOBOOK_INCLUDE_DIR plutobook/plutobook.hpp
         PATHS "${PLUTOBOOK_ROOT}/include" /usr/include /usr/local/include
@@ -100,6 +106,11 @@ target_include_directories(htmlToPDF PUBLIC
 
 # Ensure consistent Debug/Release settings with parent project
 target_compile_definitions(htmlToPDF PRIVATE NDEBUG wxDEBUG_LEVEL=0)
+
+# The vendored PlutoBook is a static library, but on Windows plutobook.h
+# defaults to __declspec(dllimport) unless this macro is defined, which leaves
+# unresolved __imp_* symbols at link time.
+target_compile_definitions(htmlToPDF PUBLIC PLUTOBOOK_BUILD_STATIC)
 
 # Ensure template generation happens before compiling
 add_dependencies(htmlToPDF generate_templates)

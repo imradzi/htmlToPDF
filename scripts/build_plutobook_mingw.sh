@@ -271,6 +271,7 @@ build_harfbuzz() {
     local dir="${WORKDIR}/harfbuzz"
     mkdir -p "$dir" && cd "$dir"
     fetch "$HARFBUZZ_URL" "harfbuzz-${HARFBUZZ_VER}.tar.xz" && extract "harfbuzz-${HARFBUZZ_VER}.tar.xz"
+    rm -rf build   # re-runnable: meson refuses to reconfigure an existing dir
     meson setup build "harfbuzz-${HARFBUZZ_VER}" --cross-file="$CROSS_FILE" \
         --prefix="$MINGW_PREFIX" --buildtype=release --default-library=static \
         -Dglib=disabled -Dgobject=disabled -Dicu=enabled -Dfreetype=enabled \
@@ -288,6 +289,7 @@ build_pixman() {
     mkdir -p "$dir" && cd "$dir"
     fetch "$PIXMAN_URL" "pixman-${PIXMAN_VER}.tar.gz" && extract "pixman-${PIXMAN_VER}.tar.gz"
     # pixman >= 0.46 ships a Meson-only tarball (no ./configure).
+    rm -rf build   # re-runnable: meson refuses to reconfigure an existing dir
     meson setup build "pixman-${PIXMAN_VER}" --cross-file="$CROSS_FILE" \
         --prefix="$MINGW_PREFIX" --buildtype=release --default-library=static \
         -Dgtk=disabled -Dlibpng=disabled -Dtests=disabled -Ddemos=disabled \
@@ -302,6 +304,7 @@ build_fontconfig() {
     local dir="${WORKDIR}/fontconfig"
     mkdir -p "$dir" && cd "$dir"
     fetch "$FONTCONFIG_URL" "fontconfig-${FONTCONFIG_VER}.tar.gz" && extract "fontconfig-${FONTCONFIG_VER}.tar.gz"
+    rm -rf build   # re-runnable: meson refuses to reconfigure an existing dir
     meson setup build "fontconfig-${FONTCONFIG_VER}" --cross-file="$CROSS_FILE" \
         --prefix="$MINGW_PREFIX" --buildtype=release --default-library=static \
         -Ddoc=disabled -Dtests=disabled -Dtools=disabled -Dcache-build=disabled
@@ -315,6 +318,7 @@ build_cairo() {
     local dir="${WORKDIR}/cairo"
     mkdir -p "$dir" && cd "$dir"
     fetch "$CAIRO_URL" "cairo-${CAIRO_VER}.tar.xz" && extract "cairo-${CAIRO_VER}.tar.xz"
+    rm -rf build   # re-runnable: meson refuses to reconfigure an existing dir
     meson setup build "cairo-${CAIRO_VER}" --cross-file="$CROSS_FILE" \
         --prefix="$MINGW_PREFIX" --buildtype=release --default-library=static \
         -Dglib=disabled -Dxlib=disabled -Dxcb=disabled -Dpng=enabled \

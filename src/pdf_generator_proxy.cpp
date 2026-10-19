@@ -8,8 +8,14 @@
 // ppServer. Keeping it in a separate translation unit lets the standalone
 // handlebars_pdf tool link PdfGenerator without pulling in `global::g`.
 #include "pdf_generator.h"
+#include "pdfevent.h"
 #include "logging.hpp"
 #include "global.h"
+
+// The event must be defined in a translation unit compiled with RTTI. Defining
+// it in pdf_generator.cpp (which is compiled with -fno-rtti for PlutoBook)
+// produces a second, differently-sized wxObjectEventFunctor vtable.
+wxDEFINE_EVENT(wpEVT_PDF_GENERATE, wxCommandEvent);
 
 #include <condition_variable>
 #include <functional>

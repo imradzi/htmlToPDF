@@ -1,9 +1,4 @@
-#include "wx/wxprec.h"
 #include <stdexcept>
-
-#ifndef WX_PRECOMP
-#include "wx/wx.h"
-#endif
 
 #include "pdf_generator.h"
 #include <plutobook.hpp>
@@ -21,7 +16,6 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
-wxDEFINE_EVENT(wpEVT_PDF_GENERATE, wxCommandEvent);
 extern std::string GetVersionNo();
 
 namespace htmlToPDF {

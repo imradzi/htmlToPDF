@@ -5,6 +5,9 @@ Build the engine before configuring the project:
 
 - Linux: `./scripts/build_plutobook_linux.sh`
 - Windows x64 (MinGW cross): `./scripts/build_plutobook_mingw.sh`
+  The Windows script also replaces ICU's stub `libsicudt.a` with the real data
+  archive from `bin/sicudt.a`; without the data PlutoBook aborts in
+  `BreakIterator::createCharacterInstance` as soon as it lays out text.
 
 Verification tools:
 - `handlebars_pdf` — renders the bundled sample templates

@@ -3,11 +3,6 @@
 #include <string>
 #include <vector>
 #include <mutex>
-#include <condition_variable>
-#include <functional>
-
-class wxEvtHandler;
-class wxCommandEvent;
 
 namespace htmlToPDF {
 
@@ -111,32 +106,26 @@ struct PdfGenerateResult {
 };
 
 // ============================================================================
-// PdfGeneratorProxy - call from worker threads, executes on main thread
+// PdfGeneratorProxy - backwards-compatible wrapper for worker threads
 // ============================================================================
+// The class name is historical: it used to marshal work to the wx main thread
+// for wkhtmltox/Qt. PlutoBook has no such requirement, so these methods now
+// render directly on the calling thread. PdfGenerator's internal mutex still
+// serializes concurrent conversions.
 
 class PdfGeneratorProxy {
 public:
     PdfGeneratorProxy();
     explicit PdfGeneratorProxy(const PdfConfig& config);
-    
-    // Set the event handler (usually wxTheApp or main frame) - must be called before use
-    static void SetEventHandler(wxEvtHandler* handler);
-    
-    // Thread-safe methods that dispatch to main thread and wait for completion
+
+    // Thread-safe: renders on the calling thread.
     bool generateFromHtml(const std::string& htmlContent, const std::string& outputPath, const PdfGenerator::PdfSettings& settings);
     bool generateMultiPagePdf(const std::vector<std::string>& htmlPages, const std::string& outputPath, const PdfGenerator::PdfSettings& settings);
     bool generateToBuffer(const std::string& htmlContent, std::string& outputBuffer);
 
-    // Handler to be called on main thread (register this with your event handler)
-    static void OnEvent(wxCommandEvent& event);
-
 private:
     PdfConfig config_;
-    static wxEvtHandler* eventHandler_;
-    static PdfGenerator generator_;  // The actual generator, used only on main thread
-    
-    // Execute request on main thread and wait for completion
-    PdfGenerateResult executeOnMainThread(const PdfGenerateRequest& request);
+    static PdfGenerator generator_;
 };
 
 } // namespace htmlToPDF

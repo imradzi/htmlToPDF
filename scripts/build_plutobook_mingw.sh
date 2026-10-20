@@ -370,10 +370,30 @@ build_plutobook() {
     done
 }
 
+# ICU's static data packaging on MinGW installs a 736-byte stub
+# libsicudt.a in lib/ and the real 31 MB data archive in bin/sicudt.a.
+# Linking the stub leaves ICU without break-iterator/locale data, which makes
+# PlutoBook assert (or die silently) as soon as it lays out text on Windows.
+fix_icu_data_archive() {
+    local lib="${MINGW_PREFIX}/lib/libsicudt.a"
+    local real="${MINGW_PREFIX}/bin/sicudt.a"
+    if [ ! -f "$real" ]; then
+        if [ -f "$lib" ] && [ "$(stat -c%s "$lib")" -lt 1048576 ]; then
+            echo "WARNING: ICU data archive is a stub and ${real} is missing; PDF text layout will fail" >&2
+        fi
+        return
+    fi
+    if [ ! -f "$lib" ] || [ "$(stat -c%s "$real")" -gt "$(stat -c%s "$lib")" ]; then
+        cp -f "$real" "$lib"
+        echo "=== Installed real ICU data archive: ${lib} ==="
+    fi
+}
+
 build_expat
 build_libpng
 build_freetype
 build_icu
+fix_icu_data_archive
 build_harfbuzz
 build_pixman
 build_fontconfig

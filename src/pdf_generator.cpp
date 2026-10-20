@@ -1,3 +1,4 @@
+#include <exception>
 #include <stdexcept>
 
 #include "pdf_generator.h"
@@ -316,15 +317,20 @@ bool ConvertToPdf(const std::string& htmlContent, const std::string& outputPath,
         return false;
     }
 
+    LOG_INFO("PlutoBook: creating book ({} bytes HTML)", htmlContent.size());
     plutobook::Book book(ResolveBookPageSize(settings), ResolveMargins(settings),
                          plutobook::MediaType::Print);
 
     const std::string baseUrl = ResolveBaseUrl(settings);
+    LOG_INFO("PlutoBook: building page style and loading HTML (baseUrl={})", baseUrl);
     const std::string userStyle = BuildPageStyle(settings);
     if (!book.loadHtml(htmlContent, userStyle, {}, baseUrl)) {
         LOG_ERROR("PlutoBook: failed to load HTML document");
         return false;
     }
+    LOG_INFO("PlutoBook: HTML loaded; paginating");
+    const uint32_t pageCount = book.pageCount();
+    LOG_INFO("PlutoBook: pagination produced {} page(s)", pageCount);
 
     const plutobook::PageSize outputPageSize = ResolveOutputPageSize(settings);
     const double contentScale = EffectiveContentScale(settings);
@@ -337,6 +343,8 @@ bool ConvertToPdf(const std::string& htmlContent, const std::string& outputPath,
         stream = std::make_unique<StringOutputStream>(*outputBuffer);
     }
 
+    LOG_INFO("PlutoBook: creating PDF canvas for {} (scale {})",
+             outputBuffer ? "<buffer>" : outputPath, contentScale);
     std::unique_ptr<plutobook::PDFCanvas> canvas;
     if (stream) canvas = std::make_unique<plutobook::PDFCanvas>(*stream, outputPageSize);
     else canvas = std::make_unique<plutobook::PDFCanvas>(outputPath, outputPageSize);
@@ -346,14 +354,15 @@ bool ConvertToPdf(const std::string& htmlContent, const std::string& outputPath,
         return false;
     }
 
-    if (book.pageCount() == 0) {
+    if (pageCount == 0) {
         LOG_ERROR("PlutoBook: document produced no pages");
         return false;
     }
 
+    LOG_INFO("PlutoBook: painting {} page(s)", pageCount);
     PaintBooks({&book}, *canvas, contentScale);
 
-    LOG_INFO("PDF generated: {} ({} pages)", outputBuffer ? "<buffer>" : outputPath, book.pageCount());
+    LOG_INFO("PDF generated: {} ({} pages)", outputBuffer ? "<buffer>" : outputPath, pageCount);
     return true;
 }
 
@@ -533,7 +542,14 @@ bool PdfGenerator::doConvertWithSettings(const std::string& htmlContent, const s
         return false;
     }
 
-    return ConvertToPdf(htmlContent, outputPath, nullptr, settings);
+    try {
+        return ConvertToPdf(htmlContent, outputPath, nullptr, settings);
+    } catch (const std::exception& e) {
+        LOG_ERROR("PlutoBook: PDF generation threw an exception: {}", e.what());
+    } catch (...) {
+        LOG_ERROR("PlutoBook: PDF generation threw an unknown exception");
+    }
+    return false;
 }
 
 } // namespace htmlToPDF

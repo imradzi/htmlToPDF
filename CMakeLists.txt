@@ -166,6 +166,13 @@ target_include_directories(html2pdf PRIVATE
     ${PLUTOBOOK_INCLUDE_DIR}
 )
 target_link_libraries(html2pdf PRIVATE htmlToPDF)
+# htmlToPDF's static dependency chain (cairo/curl/openssl) calls Windows system
+# APIs. ppServer gets these through gRPC/wxWidgets; this standalone tool links
+# nothing else, so pull them in explicitly.
+if(WIN32)
+    target_link_libraries(html2pdf PRIVATE
+        bcrypt advapi32 crypt32 ws2_32 gdi32 msimg32 dwrite d2d1 windowscodecs)
+endif()
 target_compile_features(html2pdf PRIVATE cxx_std_20)
 
 # Copy templates directory to build folder

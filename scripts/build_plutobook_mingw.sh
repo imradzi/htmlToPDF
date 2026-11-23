@@ -377,6 +377,7 @@ build_plutobook() {
 fix_icu_data_archive() {
     local lib="${MINGW_PREFIX}/lib/libsicudt.a"
     local real="${MINGW_PREFIX}/bin/sicudt.a"
+    local staged="${PLUTOBOOK_DEST}/lib/libsicudt.a"
     if [ ! -f "$real" ]; then
         if [ -f "$lib" ] && [ "$(stat -c%s "$lib")" -lt 1048576 ]; then
             echo "WARNING: ICU data archive is a stub and ${real} is missing; PDF text layout will fail" >&2
@@ -384,9 +385,18 @@ fix_icu_data_archive() {
         return
     fi
     if [ ! -f "$lib" ] || [ "$(stat -c%s "$real")" -gt "$(stat -c%s "$lib")" ]; then
-        cp -f "$real" "$lib"
-        echo "=== Installed real ICU data archive: ${lib} ==="
+        if cp -f "$real" "$lib" 2>/dev/null; then
+            echo "=== Installed real ICU data archive: ${lib} ==="
+        else
+            echo "WARNING: cannot replace ${lib}; relying on the staged copy" >&2
+        fi
     fi
+    # Keep a copy next to libplutobook.a: pkg-config lists this -L directory
+    # first, so ppServer still links the real data if the dependency root's
+    # lib/ is read-only or gets restored from the stub.
+    mkdir -p "$(dirname "$staged")"
+    cp -f "$real" "$staged"
+    echo "=== Staged real ICU data archive: ${staged} ($(stat -c%s "$staged") bytes) ==="
 }
 
 build_expat
